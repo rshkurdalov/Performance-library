@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="source\algo\DistanceGeometry.h" />
+    <ClInclude Include="source\Application.h" />
+    <ClInclude Include="source\atc\Function.h" />
+    <ClInclude Include="source\atc\StaticOperators.h" />
+    <ClInclude Include="source\atc\TypeBase.h" />
+    <ClInclude Include="source\gpu\Bitmap.h" />
+    <ClInclude Include="source\gpu\Buffer.h" />
+    <ClInclude Include="source\gpu\CommandBuffer.h" />
+    <ClInclude Include="source\gpu\CommandPool.h" />
+    <ClInclude Include="source\gpu\DescriptorPool.h" />
+    <ClInclude Include="source\gpu\DescriptorSet.h" />
+    <ClInclude Include="source\gpu\GpuDevice.h" />
+    <ClInclude Include="source\gpu\GpuMemoryManager.h" />
+    <ClInclude Include="source\gpu\GradientCollection.h" />
+    <ClInclude Include="source\gpu\Pipeline.h" />
+    <ClInclude Include="source\gpu\RenderTarget.h" />
+    <ClInclude Include="source\gpu\Shader.h" />
+    <ClInclude Include="source\gpu\Surface.h" />
+    <ClInclude Include="source\gpu\SwapChain.h" />
+    <ClInclude Include="source\gpu\VulkanAPI.h" />
+    <ClInclude Include="source\graphics\Color.h" />
+    <ClInclude Include="source\graphics\Font.h" />
+    <ClInclude Include="source\graphics\GeometryPath.h" />
+    <ClInclude Include="source\graphics\TextLayout.h" />
+    <ClInclude Include="source\kernel\ErrorCodes.h" />
+    <ClInclude Include="source\kernel\kernel.h" />
+    <ClInclude Include="source\kernel\OperatingSystemAPI.h" />
+    <ClInclude Include="source\kernel\SharedObject.h" />
+    <ClInclude Include="source\math\MathBase.h" />
+    <ClInclude Include="source\math\VectorMath.h" />
+    <ClInclude Include="source\Scene.h" />
+    <ClInclude Include="source\ui\ScrollBar.h" />
+    <ClInclude Include="source\ui\UIEventArgs.h" />
+    <ClInclude Include="source\ui\UIObject.h" />
+    <ClInclude Include="source\ui\UITypes.h" />
+    <ClInclude Include="source\ui\Window.h" />
+    <ClInclude Include="source\util\AsyncTimer.h" />
+    <ClInclude Include="source\util\CallbackTimer.h" />
+    <ClInclude Include="source\util\Observer.h" />
+    <ClInclude Include="source\util\Time.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="source\algo\DistanceGeometry.cpp" />
+    <ClCompile Include="source\Application.cpp" />
+    <ClCompile Include="source\gpu\Bitmap.cpp" />
+    <ClCompile Include="source\gpu\Buffer.cpp" />
+    <ClCompile Include="source\gpu\CommandBuffer.cpp" />
+    <ClCompile Include="source\gpu\CommandPool.cpp" />
+    <ClCompile Include="source\gpu\DescriptorPool.cpp" />
+    <ClCompile Include="source\gpu\DescriptorSet.cpp" />
+    <ClCompile Include="source\gpu\GpuDevice.cpp" />
+    <ClCompile Include="source\gpu\GpuMemoryManager.cpp" />
+    <ClCompile Include="source\gpu\GradientCollection.cpp" />
+    <ClCompile Include="source\gpu\Pipeline.cpp" />
+    <ClCompile Include="source\gpu\RenderTarget.cpp" />
+    <ClCompile Include="source\gpu\Shader.cpp" />
+    <ClCompile Include="source\gpu\Surface.cpp" />
+    <ClCompile Include="source\gpu\SwapChain.cpp" />
+    <ClCompile Include="source\gpu\VulkanAPI.cpp" />
+    <ClCompile Include="source\graphics\Font.cpp" />
+    <ClCompile Include="source\graphics\GeometryPath.cpp" />
+    <ClCompile Include="source\graphics\TextLayout.cpp" />
+    <ClCompile Include="source\kernel\kernel.cpp" />
+    <ClCompile Include="source\kernel\OperatingSystemAPI.cpp" />
+    <ClCompile Include="source\kernel\SharedObject.cpp" />
+    <ClCompile Include="source\Main.cpp" />
+    <ClCompile Include="source\Scene.cpp" />
+    <ClCompile Include="source\ui\UIObject.cpp" />
+    <ClCompile Include="source\ui\Window.cpp" />
+    <ClCompile Include="source\util\AsyncTimer.cpp" />
+    <ClCompile Include="source\util\CallbackTimer.cpp" />
+    <ClCompile Include="source\util\Time.cpp" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>15.0</VCProjectVersion>
+    <ProjectGuid>{00C819A5-E59D-429D-9860-F9F7F1E26F89}</ProjectGuid>
+    <RootNamespace>Performancelibrary</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0.17134.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>$(ProjectDir)\source;$(ProjectDir)\dependencies;$(ProjectDir)\dependencies\freetype;</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>$(ProjectDir)\source;$(ProjectDir)\dependencies;$(ProjectDir)\dependencies\freetype;</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

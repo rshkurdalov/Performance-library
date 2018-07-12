@@ -1,0 +1,255 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Source Files\atc">
+      <UniqueIdentifier>{135aa1c2-2a62-4eea-97ce-0f9542489e5f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\algo">
+      <UniqueIdentifier>{e1d00489-9418-4ae6-acdf-a6ec180b5d9f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\ui">
+      <UniqueIdentifier>{fa379486-b187-49c1-8972-8308831e9b67}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\gpu">
+      <UniqueIdentifier>{8913abc9-8f76-4f8a-88ae-86fbce2fef2e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\graphics">
+      <UniqueIdentifier>{f3efc5e0-217a-42c7-a834-5b2ed3ed244f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\kernel">
+      <UniqueIdentifier>{a4b0ebb9-34af-486a-a78e-bcd6c8464b71}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\math">
+      <UniqueIdentifier>{6fa3da7b-09b5-45d4-aa4c-368b6f55d83b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\util">
+      <UniqueIdentifier>{3e1e47b2-e403-42cd-ae07-97772726dab9}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="source\atc\Function.h">
+      <Filter>Source Files\atc</Filter>
+    </ClInclude>
+    <ClInclude Include="source\atc\StaticOperators.h">
+      <Filter>Source Files\atc</Filter>
+    </ClInclude>
+    <ClInclude Include="source\atc\TypeBase.h">
+      <Filter>Source Files\atc</Filter>
+    </ClInclude>
+    <ClInclude Include="source\algo\DistanceGeometry.h">
+      <Filter>Source Files\algo</Filter>
+    </ClInclude>
+    <ClInclude Include="source\gpu\Bitmap.h">
+      <Filter>Source Files\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="source\gpu\Buffer.h">
+      <Filter>Source Files\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="source\gpu\CommandBuffer.h">
+      <Filter>Source Files\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="source\gpu\CommandPool.h">
+      <Filter>Source Files\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="source\gpu\DescriptorPool.h">
+      <Filter>Source Files\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="source\gpu\DescriptorSet.h">
+      <Filter>Source Files\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="source\gpu\GpuDevice.h">
+      <Filter>Source Files\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="source\gpu\GpuMemoryManager.h">
+      <Filter>Source Files\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="source\gpu\GradientCollection.h">
+      <Filter>Source Files\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="source\gpu\Pipeline.h">
+      <Filter>Source Files\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="source\gpu\RenderTarget.h">
+      <Filter>Source Files\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="source\gpu\Shader.h">
+      <Filter>Source Files\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="source\gpu\Surface.h">
+      <Filter>Source Files\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="source\gpu\SwapChain.h">
+      <Filter>Source Files\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="source\gpu\VulkanAPI.h">
+      <Filter>Source Files\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="source\graphics\Color.h">
+      <Filter>Source Files\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="source\graphics\Font.h">
+      <Filter>Source Files\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="source\graphics\GeometryPath.h">
+      <Filter>Source Files\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="source\graphics\TextLayout.h">
+      <Filter>Source Files\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="source\kernel\ErrorCodes.h">
+      <Filter>Source Files\kernel</Filter>
+    </ClInclude>
+    <ClInclude Include="source\kernel\kernel.h">
+      <Filter>Source Files\kernel</Filter>
+    </ClInclude>
+    <ClInclude Include="source\kernel\OperatingSystemAPI.h">
+      <Filter>Source Files\kernel</Filter>
+    </ClInclude>
+    <ClInclude Include="source\kernel\SharedObject.h">
+      <Filter>Source Files\kernel</Filter>
+    </ClInclude>
+    <ClInclude Include="source\math\MathBase.h">
+      <Filter>Source Files\math</Filter>
+    </ClInclude>
+    <ClInclude Include="source\math\VectorMath.h">
+      <Filter>Source Files\math</Filter>
+    </ClInclude>
+    <ClInclude Include="source\util\AsyncTimer.h">
+      <Filter>Source Files\util</Filter>
+    </ClInclude>
+    <ClInclude Include="source\util\CallbackTimer.h">
+      <Filter>Source Files\util</Filter>
+    </ClInclude>
+    <ClInclude Include="source\util\Observer.h">
+      <Filter>Source Files\util</Filter>
+    </ClInclude>
+    <ClInclude Include="source\util\Time.h">
+      <Filter>Source Files\util</Filter>
+    </ClInclude>
+    <ClInclude Include="source\ui\ScrollBar.h">
+      <Filter>Source Files\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="source\ui\UIEventArgs.h">
+      <Filter>Source Files\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="source\ui\UIObject.h">
+      <Filter>Source Files\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="source\ui\UITypes.h">
+      <Filter>Source Files\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="source\ui\Window.h">
+      <Filter>Source Files\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Application.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Scene.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="source\algo\DistanceGeometry.cpp">
+      <Filter>Source Files\algo</Filter>
+    </ClCompile>
+    <ClCompile Include="source\gpu\Bitmap.cpp">
+      <Filter>Source Files\gpu</Filter>
+    </ClCompile>
+    <ClCompile Include="source\gpu\Buffer.cpp">
+      <Filter>Source Files\gpu</Filter>
+    </ClCompile>
+    <ClCompile Include="source\gpu\CommandBuffer.cpp">
+      <Filter>Source Files\gpu</Filter>
+    </ClCompile>
+    <ClCompile Include="source\gpu\CommandPool.cpp">
+      <Filter>Source Files\gpu</Filter>
+    </ClCompile>
+    <ClCompile Include="source\gpu\DescriptorPool.cpp">
+      <Filter>Source Files\gpu</Filter>
+    </ClCompile>
+    <ClCompile Include="source\gpu\DescriptorSet.cpp">
+      <Filter>Source Files\gpu</Filter>
+    </ClCompile>
+    <ClCompile Include="source\gpu\GpuDevice.cpp">
+      <Filter>Source Files\gpu</Filter>
+    </ClCompile>
+    <ClCompile Include="source\gpu\GpuMemoryManager.cpp">
+      <Filter>Source Files\gpu</Filter>
+    </ClCompile>
+    <ClCompile Include="source\gpu\GradientCollection.cpp">
+      <Filter>Source Files\gpu</Filter>
+    </ClCompile>
+    <ClCompile Include="source\gpu\Pipeline.cpp">
+      <Filter>Source Files\gpu</Filter>
+    </ClCompile>
+    <ClCompile Include="source\gpu\RenderTarget.cpp">
+      <Filter>Source Files\gpu</Filter>
+    </ClCompile>
+    <ClCompile Include="source\gpu\Shader.cpp">
+      <Filter>Source Files\gpu</Filter>
+    </ClCompile>
+    <ClCompile Include="source\gpu\Surface.cpp">
+      <Filter>Source Files\gpu</Filter>
+    </ClCompile>
+    <ClCompile Include="source\gpu\SwapChain.cpp">
+      <Filter>Source Files\gpu</Filter>
+    </ClCompile>
+    <ClCompile Include="source\gpu\VulkanAPI.cpp">
+      <Filter>Source Files\gpu</Filter>
+    </ClCompile>
+    <ClCompile Include="source\graphics\Font.cpp">
+      <Filter>Source Files\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="source\graphics\GeometryPath.cpp">
+      <Filter>Source Files\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="source\graphics\TextLayout.cpp">
+      <Filter>Source Files\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="source\kernel\kernel.cpp">
+      <Filter>Source Files\kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="source\kernel\OperatingSystemAPI.cpp">
+      <Filter>Source Files\kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="source\kernel\SharedObject.cpp">
+      <Filter>Source Files\kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="source\util\AsyncTimer.cpp">
+      <Filter>Source Files\util</Filter>
+    </ClCompile>
+    <ClCompile Include="source\util\CallbackTimer.cpp">
+      <Filter>Source Files\util</Filter>
+    </ClCompile>
+    <ClCompile Include="source\util\Time.cpp">
+      <Filter>Source Files\util</Filter>
+    </ClCompile>
+    <ClCompile Include="source\ui\UIObject.cpp">
+      <Filter>Source Files\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="source\ui\Window.cpp">
+      <Filter>Source Files\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Application.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Scene.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
