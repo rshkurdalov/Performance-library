@@ -26,7 +26,7 @@ for Windows and Android platforms.
 </ul>
 
 # Got questions?
-Ask me: rshkurdalov@gmail.com
+Contact me: https://www.linkedin.com/in/roman-shkurdalov-a9601a135/
 
 # License
 Clear BSD License
