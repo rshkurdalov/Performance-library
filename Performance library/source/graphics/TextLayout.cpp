@@ -61,8 +61,8 @@ namespace graphics
 		for (msize i = 0; i < textObjects.size(); i++)
 		{
 			transform[2][0] = cx;
-			rt->SetTransform(transform);
-			rt->FillGeometry(textObjects[i].metadata.outline);
+			/*rt->SetTransform(transform);
+			rt->FillGeometry(textObjects[i].metadata.outline);*/
 			cx += textObjects[i].metadata.advance.x*textObjects[i].attributes.fontSize;
 		}
 	}

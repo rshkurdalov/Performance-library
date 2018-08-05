@@ -6,6 +6,15 @@
 #include "atc\TypeBase.h"
 #include "kernel\ErrorCodes.h"
 
+namespace kernel {}
+namespace atc {}
+namespace math {}
+namespace algo {}
+namespace util {}
+namespace gpu {}
+namespace graphics {}
+namespace ui {}
+
 namespace kernel
 {
 	typedef class SharedObject SharedObject;
@@ -40,18 +49,6 @@ namespace util
 	typedef class CallbackTimer CallbackTimer;
 }
 
-namespace graphics
-{
-	using namespace kernel;
-	using namespace algo;
-	using namespace util;
-
-	typedef class Color Color;
-	typedef class GeometryPath GeometryPath;
-	typedef class Geometry Geometry;
-	typedef class Font Font;
-}
-
 namespace gpu
 {
 	using namespace kernel;
@@ -71,6 +68,19 @@ namespace gpu
 	typedef class RenderTarget RenderTarget;
 	typedef class GradientCollection GradientCollection;
 	typedef class Bitmap Bitmap;
+}
+
+namespace graphics
+{
+	using namespace kernel;
+	using namespace algo;
+	using namespace gpu;
+	using namespace util;
+
+	typedef class Color Color;
+	typedef class GeometryPath GeometryPath;
+	typedef class Geometry Geometry;
+	typedef class Font Font;
 }
 
 namespace ui

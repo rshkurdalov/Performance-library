@@ -79,8 +79,17 @@ void Scene::RenderImpl()
 
 	app->renderTarget->Begin();
 
+	GeometryPath path;
+	path.Move(Vector2f(600, 200));
+	path.AddLine(Vector2f(500, 300));
+	path.AddArcSegment(Vector2f(400, 400), 150, 50, mPI / 6, true, true);
+	path.AddLine(Vector2f(800, 550));
+	app->renderTarget->SetSolidColorBrush(Color(Color::White));
+	Geometry g;
+	g.FillGeometry(&path);
+	app->renderTarget->Render(&g);
+
 	app->renderTarget->SetColorInterpolationMode(ColorInterpolationModeFlat);
-	app->renderTarget->FillDistanceGeometry(&geometry2, gradientCollection, 1800);
 
 	// Uncomment to test text rendering
 

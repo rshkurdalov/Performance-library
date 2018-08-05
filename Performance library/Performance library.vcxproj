@@ -41,6 +41,7 @@
     <ClInclude Include="source\gpu\VulkanAPI.h" />
     <ClInclude Include="source\graphics\Color.h" />
     <ClInclude Include="source\graphics\Font.h" />
+    <ClInclude Include="source\graphics\Geometry.h" />
     <ClInclude Include="source\graphics\GeometryPath.h" />
     <ClInclude Include="source\graphics\TextLayout.h" />
     <ClInclude Include="source\kernel\ErrorCodes.h" />
@@ -79,6 +80,7 @@
     <ClCompile Include="source\gpu\SwapChain.cpp" />
     <ClCompile Include="source\gpu\VulkanAPI.cpp" />
     <ClCompile Include="source\graphics\Font.cpp" />
+    <ClCompile Include="source\graphics\Geometry.cpp" />
     <ClCompile Include="source\graphics\GeometryPath.cpp" />
     <ClCompile Include="source\graphics\TextLayout.cpp" />
     <ClCompile Include="source\kernel\kernel.cpp" />

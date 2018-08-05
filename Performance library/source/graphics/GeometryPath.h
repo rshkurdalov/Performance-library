@@ -27,11 +27,11 @@ namespace graphics
 		// Path is empty if it does not have any vertex
 		bool IsEmpty();
 
-		// If geometry path is not empty it will be reseted
-		void Begin(Vector2f initialVertex);
-
 		// Reset path data and return to empty state
 		void Reset();
+
+		// Begins or continues geometry path
+		void Move(Vector2f controlPoint);
 
 		// Geometry path must not be empty
 		void AddLine(Vector2f controlPoint);
@@ -58,7 +58,7 @@ namespace graphics
 			bool isLarge,
 			bool isCounterclockwiseSweep);
 
-		// Geometry path must not be empty
-		void Move(Vector2f vertex);
+		// Concatenate two paths
+		void Append(GeometryPath *path);
 	};
 }

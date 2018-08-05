@@ -68,8 +68,7 @@ namespace graphics
 						-ftFace->glyph->outline.points[p].y*sm);
 					if (ftFace->glyph->outline.tags[p] & FT_CURVE_TAG_ON)
 					{
-						if (p == 0) g->Begin(vt);
-						else if (p == pf) g->Move(vt);
+						if (p == pf) g->Move(vt);
 						else g->AddLine(vt);
 						p++;
 					}

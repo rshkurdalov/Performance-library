@@ -2,6 +2,7 @@
 #include "ui\UIObject.h"
 #include "Application.h"
 #include "graphics/GeometryPath.h"
+#include "graphics/Geometry.h"
 
 using namespace ui;
 

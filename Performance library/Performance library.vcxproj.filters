@@ -159,6 +159,9 @@
     <ClInclude Include="source\Scene.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="source\graphics\Geometry.h">
+      <Filter>Source Files\graphics</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\algo\DistanceGeometry.cpp">
@@ -250,6 +253,9 @@
     </ClCompile>
     <ClCompile Include="source\Scene.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="source\graphics\Geometry.cpp">
+      <Filter>Source Files\graphics</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

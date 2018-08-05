@@ -28,6 +28,7 @@ namespace gpu
 		friend class RenderTarget;
 		friend class Bitmap;
 		friend class GradientCollection;
+		friend class Geometry;
 		friend HResult VkInitialize();
 	protected:
 		VkPhysicalDevice vkPhysicalDevice;

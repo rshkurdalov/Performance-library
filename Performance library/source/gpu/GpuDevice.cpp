@@ -64,8 +64,6 @@ namespace gpu
 			RenderTarget::vertexBufferSize,
 			&vertexBuffer);
 
-		msize geometryMemory = AllocateMemory(RenderTarget::geometryBufferSize);
-
 		VkPushConstantRange vkPushConstantRange;
 		vkPushConstantRange.offset = 0;
 		vkPushConstantRange.size = 128;
@@ -1396,8 +1394,7 @@ namespace gpu
 			swapChain,
 			vertexBuffer,
 			cmdBuffer,
-			pipeline,
-			geometryMemory);
+			pipeline);
 
 		return HResultSuccess;
 	}

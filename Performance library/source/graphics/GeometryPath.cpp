@@ -17,16 +17,17 @@ namespace graphics
 	{
 		return data.size() == 0;
 	}
-	void GeometryPath::Begin(Vector2f initialVertex)
-	{
-		Reset();
-		data.push_back(initialVertex.x);
-		data.push_back(initialVertex.y);
-	}
 	void GeometryPath::Reset()
 	{
 		data.clear();
 		count = 0;
+	}
+	void GeometryPath::Move(Vector2f controlPoint)
+	{
+		data.push_back(Reinterpret<float32>(uint32(geometryTypeMove)));
+		data.push_back(controlPoint.x);
+		data.push_back(controlPoint.y);
+		count++;
 	}
 	void GeometryPath::AddLine(Vector2f controlPoint)
 	{
@@ -103,11 +104,9 @@ namespace graphics
 		data.push_back(controlPoint.y);
 		count++;
 	}
-	void GeometryPath::Move(Vector2f vertex)
+	void GeometryPath::Append(GeometryPath *path)
 	{
-		data.push_back(Reinterpret<float32>(uint32(geometryTypeMove)));
-		data.push_back(vertex.x);
-		data.push_back(vertex.y);
-		count++;
+		data.insert(data.end(), path->data.begin(), path->data.end());
+		count += path->count;
 	}
 }
