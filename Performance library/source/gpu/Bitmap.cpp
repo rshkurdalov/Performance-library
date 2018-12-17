@@ -4,7 +4,6 @@
 #include "gpu\Bitmap.h"
 #include "gpu\GpuDevice.h"
 #include "graphics\Color.h"
-#include <cstring>
 
 namespace gpu
 {
@@ -23,7 +22,7 @@ namespace gpu
 	Bitmap::~Bitmap()
 	{
 		device->DeallocateMemory(memOffset);
-		device->Release();
+		device->Unref();
 	}
 	uint32 Bitmap::GetWidth()
 	{

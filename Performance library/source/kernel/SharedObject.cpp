@@ -7,27 +7,15 @@ namespace kernel
 {
     SharedObject::SharedObject()
     {
-		refCounter = 1;
+		referenceCounter = 1;
     }
     void SharedObject::AddRef()
     {
-		refCounter++;
+		referenceCounter++;
     }
-    void SharedObject::Release()
+    void SharedObject::Unref()
     {
-		if (--refCounter == 0)
+		if (--referenceCounter == 0)
 			delete this;
-    }
-    bool SharedObject::TryLock()
-    {
-        return criticalSection.try_lock();
-    }
-    void SharedObject::Lock()
-    {
-        criticalSection.lock();
-    }
-    void SharedObject::Unlock()
-    {
-        criticalSection.unlock();
     }
 }

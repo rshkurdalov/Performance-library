@@ -3,111 +3,121 @@
 
 #include "util\CallbackTimer.h"
 #include "util\Time.h"
+#include <chrono>
+#include <map>
+#include <thread>
+#include <condition_variable>
+#include <concrt.h>
 
-using namespace std;
-using namespace chrono;
+using namespace std::chrono;
 
 namespace util
 {
-    CallbackTimer::~CallbackTimer()
-    {
-        Stop();
-    }
-    void CallbackTimer::Start()
-    {
-        Time::criticalSection.lock();
-        Lock();
-        if(state != TimerStateInactive)
-        {
-            Unlock();
-            Time::criticalSection.unlock();
-            return;
-        }
-        nextAlarm = duration_cast<microseconds>(
-            high_resolution_clock::now().time_since_epoch()).count() + period;
-        if(nextAlarm<Time::timers.begin()->first)
-            Time::waitPoint.notify_one();
-        Time::timers.insert(
-            std::pair<int64, CallbackTimer *>(
-                nextAlarm,
-                this));
-        state = TimerStateActive;
-        Unlock();
-        Time::criticalSection.unlock();
-    }
-    void CallbackTimer::Pause()
-    {
-        Time::criticalSection.lock();
-        Lock();
-        if(state != TimerStateActive)
-        {
-            Unlock();
-            Time::criticalSection.unlock();
-            return;
-        }
-        multimap<int64, CallbackTimer *>::const_iterator iter
-            = Time::timers.find(nextAlarm);
-        while(iter->second != this) iter++;
-        Time::timers.erase(iter);
-        nextAlarm -= duration_cast<microseconds>(
-            high_resolution_clock::now().time_since_epoch()).count();
-        state = TimerStatePaused;
-        Unlock();
-        Time::criticalSection.unlock();
-    }
-    void CallbackTimer::Resume()
-    {
-        Time::criticalSection.lock();
-        Lock();
-        if(state != TimerStatePaused)
-        {
-            Unlock();
-            Time::criticalSection.unlock();
-            return;
-        }
-        nextAlarm += duration_cast<microseconds>(
-            high_resolution_clock::now().time_since_epoch()).count();
-        if(nextAlarm<Time::timers.begin()->first)
-            Time::waitPoint.notify_one();
-        Time::timers.insert(
-            std::pair<int64, CallbackTimer *>(
-                nextAlarm, this));
-        state = TimerStateActive;
-        Unlock();
-        Time::criticalSection.unlock();
-    }
-    void CallbackTimer::Refresh()
-    {
-        Stop();
-        Start();
-    }
-    void CallbackTimer::Stop()
-    {
-        Time::criticalSection.lock();
-        Lock();
-        if(state == TimerStateInactive)
-        {
-            Unlock();
-            Time::criticalSection.unlock();
-            return;
-        }
-        else if(state == TimerStatePaused)
-        {
-            state = TimerStateInactive;
-            Unlock();
-            Time::criticalSection.unlock();
-            return;
-        }
-        multimap<int64, CallbackTimer *>::const_iterator iter
-            = Time::timers.find(nextAlarm);
-        while(iter->second != this) iter++;
-        Time::timers.erase(iter);
-        state = TimerStateInactive;
-        Unlock();
-        Time::criticalSection.unlock();
-    }
-    TimerState CallbackTimer::GetTimerState()
-    {
-        return state;
-    }
+	int64 timePoint;
+	std::condition_variable waitPoint;
+	std::multimap<int64, CallbackTimer *> timers;
+	void timerProcessFunction()
+	{
+		std::multimap<int64, CallbackTimer *>::const_iterator iter;
+		CallbackTimer *alarmedTimer;
+		std::mutex timerMutex;
+		std::unique_lock<std::mutex> locker(timerMutex);
+		int64 timePoint;
+		while (true)
+		{
+			EnterSharedSection();
+			timePoint = Time::Now();
+			iter = timers.begin();
+			while (timePoint >= iter->first)
+			{
+				alarmedTimer = iter->second;
+				alarmedTimer->AddRef();
+				timers.erase(iter);
+				TimerEvent e;
+				e.param = alarmedTimer->param;
+				e.period = alarmedTimer->period;
+				e.stop = false;
+				alarmedTimer->callback(&e);
+				if (!e.stop)
+				{
+					alarmedTimer->period = e.period;
+					alarmedTimer->nextAlarm += alarmedTimer->period;
+					timers.insert(
+						std::pair<int64, CallbackTimer *>(
+							alarmedTimer->nextAlarm, alarmedTimer));
+				}
+				else alarmedTimer->state = TimerStateInactive;
+				alarmedTimer->Unref();
+				iter = timers.begin();
+			}
+			LeaveSharedSection();
+			waitPoint.wait_until(locker, time_point<steady_clock>(nanoseconds(iter->first)));
+		}
+	}
+
+	HResult TimerProcessInitialize()
+	{
+		void(*defaultCallback)(TimerEvent *) = [](TimerEvent *e)->void {};
+		CallbackTimer *defaultTimer;
+		Time::CreateCallbackTimer(defaultCallback, nullptr, 1000000000000, &defaultTimer);
+		defaultTimer->nextAlarm = Time::Now() + 1000000000000;
+		timers.insert(std::pair<int64, CallbackTimer *>(defaultTimer->nextAlarm, defaultTimer));
+		std::thread timerThread(timerProcessFunction);
+		timerThread.detach();
+		return HResultSuccess;
+	}
+
+	CallbackTimer::~CallbackTimer()
+	{
+		Stop();
+	}
+	void CallbackTimer::Start()
+	{
+		if (state != TimerStateInactive) return;
+		nextAlarm = Time::Now() + period;
+		if (nextAlarm < timers.begin()->first)
+			waitPoint.notify_one();
+		timers.insert(std::pair<int64, CallbackTimer *>(nextAlarm, this));
+		state = TimerStateActive;
+	}
+	void CallbackTimer::Pause()
+	{
+		if (state != TimerStateActive) return;
+		std::multimap<int64, CallbackTimer *>::const_iterator iter = timers.find(nextAlarm);
+		while (iter->second != this) iter++;
+		timers.erase(iter);
+		nextAlarm -= Time::Now();
+		state = TimerStatePaused;
+	}
+	void CallbackTimer::Resume()
+	{
+		if (state != TimerStatePaused) return;
+		nextAlarm += Time::Now();
+		if (nextAlarm < timers.begin()->first)
+			waitPoint.notify_one();
+		timers.insert(std::pair<int64, CallbackTimer *>(nextAlarm, this));
+		state = TimerStateActive;
+	}
+	void CallbackTimer::Refresh()
+	{
+		Stop();
+		Start();
+	}
+	void CallbackTimer::Stop()
+	{
+		if (state == TimerStateInactive) return;
+		else if (state == TimerStatePaused)
+		{
+			state = TimerStateInactive;
+			return;
+		}
+		std::multimap<int64, CallbackTimer *>::const_iterator iter = timers.find(nextAlarm);
+		while (iter->second != this) iter++;
+		timers.erase(iter);
+		state = TimerStateInactive;
+	}
+	TimerState CallbackTimer::GetState()
+	{
+		return state;
+	}
 }

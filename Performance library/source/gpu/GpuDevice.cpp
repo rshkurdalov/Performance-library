@@ -4,155 +4,170 @@
 #include "gpu\GpuDevice.h"
 #include "gpu\Surface.h"
 #include "gpu\GpuMemoryManager.h"
-#include "gpu\CommandPool.h"
 #include "gpu\CommandBuffer.h"
-#include "gpu\DescriptorPool.h"
-#include "gpu\DescriptorSet.h"
 #include "gpu\Shader.h"
 #include "gpu\Pipeline.h"
 #include "gpu\SwapChain.h"
 #include "gpu\Buffer.h"
 #include "gpu\RenderTarget.h"
 #include "gpu\Bitmap.h"
-#include "gpu\VulkanAPI.h"
+#include "gpu\GpuManager.h"
+#include "gpu\ShaderData.h"
 #include "math\VectorMath.h"
 #include <vector>
 
 namespace gpu
 {
 	GpuDevice::GpuDevice(
+		VkInstance vkInstance,
 		VkPhysicalDevice vkPhysicalDevice,
 		VkPhysicalDeviceProperties vkDeviceProp,
 		VkDevice vkDevice,
-		std::vector<VkQueueFamilyProperties> &familyProp)
+		std::vector<VkQueueFamilyProperties> &familyProp,
+		VkCommandPool vkCmdPool,
+		VkDescriptorPool vkDescPool,
+		VkDescriptorSetLayout descSetLayout,
+		VkDescriptorSet vkDescSet,
+		VkPipelineLayout vkPipelineLayout,
+		uint32 graphicsQueueFamilyIndex,
+		VkQueue vkGraphicsQueue)
 	{
+		this->vkInstance = vkInstance;
 		this->vkPhysicalDevice = vkPhysicalDevice;
 		this->vkDeviceProp = vkDeviceProp;
 		this->vkDevice = vkDevice;
 		this->familyProp = familyProp;
-
-		DescriptorPool *descPool;
-		CreateDescriptorPool(&descPool);
-		VkDescriptorSetLayoutBinding descSetBinding;
-		descSetBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-		descSetBinding.descriptorCount = 1;
-		descSetBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-		descSetBinding.binding = 0;
-		descSetBinding.pImmutableSamplers = nullptr;
-		VkDescriptorSetLayout descSetLayout;
-		VkDescriptorSetLayoutCreateInfo descSetCreateInfo;
-		descSetCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		descSetCreateInfo.pNext = nullptr;
-		descSetCreateInfo.bindingCount = 1;
-		descSetCreateInfo.pBindings = &descSetBinding;
-		descSetCreateInfo.flags = 0;
-		vkCreateDescriptorSetLayout(vkDevice, &descSetCreateInfo, nullptr, &descSetLayout);
-		descPool->CreateDescriptorSet(1, &descSetLayout, &descSet);
-
+		this->vkCmdPool = vkCmdPool;
+		this->vkDescPool = vkDescPool;
+		this->descSetLayout = descSetLayout;
+		this->vkDescSet = vkDescSet;
+		this->vkPipelineLayout = vkPipelineLayout;
+		this->graphicsQueueFamilyIndex = graphicsQueueFamilyIndex;
+		this->vkGraphicsQueue = vkGraphicsQueue;
 		CreateBuffer(
 			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 			GpuMemoryManager::InitialHeapSize,
 			&storageBuffer);
-		descSet->UpdateBuffer(storageBuffer);
-
-		memManager = new GpuMemoryManager(storageBuffer, descSet);
-
-		CreateBuffer(
-			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-			RenderTarget::vertexBufferSize,
-			&vertexBuffer);
-
-		VkPushConstantRange vkPushConstantRange;
-		vkPushConstantRange.offset = 0;
-		vkPushConstantRange.size = 128;
-		vkPushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-		VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo;
-		pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		pipelineLayoutCreateInfo.pNext = nullptr;
-		pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
-		pipelineLayoutCreateInfo.pPushConstantRanges = &vkPushConstantRange;
-		pipelineLayoutCreateInfo.setLayoutCount = 1;
-		pipelineLayoutCreateInfo.pSetLayouts = &descSetLayout;
-		pipelineLayoutCreateInfo.flags = 0;
-		vkCreatePipelineLayout(
-			vkDevice,
-			&pipelineLayoutCreateInfo,
-			nullptr,
-			&vkPipelineLayout);
-
-		for (uint32 i = 0; i < familyProp.size(); i++)
-		{
-			if (familyProp[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
-				graphicsQueueFamilyIndex = i;
-		}
-		vkGetDeviceQueue(vkDevice, graphicsQueueFamilyIndex, 0, &vkGraphicsQueue);
+		UpdateStorageBuffer();
+		memManager = new GpuMemoryManager(this, storageBuffer);
 	}
 	GpuDevice::~GpuDevice()
 	{
-		vkDestroyPipelineLayout(vkDevice, vkPipelineLayout, nullptr);
+		storageBuffer->Unref();
+		delete memManager;
+		vkDestroyPipelineLayout(
+			vkDevice,
+			vkPipelineLayout,
+			nullptr);
+		vkFreeDescriptorSets(
+			vkDevice,
+			vkDescPool,
+			1,
+			&vkDescSet);
+		vkDestroyDescriptorSetLayout(
+			vkDevice,
+			descSetLayout,
+			nullptr);
+		vkDestroyDescriptorPool(
+			vkDevice,
+			vkDescPool,
+			nullptr);
+		vkDestroyCommandPool(
+			vkDevice,
+			vkCmdPool,
+			nullptr);
 		vkDestroyDevice(vkDevice, nullptr);
+		vkDestroyInstance(vkInstance, nullptr);
 	}
-	msize GpuDevice::AllocateMemory(msize size)
+	uint32 GpuDevice::AllocateMemory(uint32 size)
 	{
-		Lock();
-		msize offset = memManager->Allocate(size);
-		Unlock();
-		return offset;
+		return memManager->Allocate(size);
 	}
-	void GpuDevice::DeallocateMemory(msize offset)
+	void GpuDevice::DeallocateMemory(uint32 offset)
 	{
-		Lock();
 		memManager->Deallocate(offset);
-		Unlock();
 	}
-	void GpuDevice::MapMemory(msize offset, msize size, void **ppData)
+	void GpuDevice::MapMemory(uint32 offset, uint32 size, void **ppData)
 	{
-		csMemory.lock();
-		VkResult res = vkMapMemory(vkDevice, storageBuffer->vkBufferMemory, offset, size, 0, ppData);
+		memorySection.lock();
+		vkMapMemory(vkDevice, storageBuffer->vkBufferMemory, offset, size, 0, ppData);
 	}
 	void GpuDevice::UnmapMemory()
 	{
 		vkUnmapMemory(vkDevice, storageBuffer->vkBufferMemory);
-		csMemory.unlock();
+		memorySection.unlock();
 	}
-	HResult GpuDevice::CreateCommandPool(CommandPool **ppCommandPool)
+	void GpuDevice::UpdateStorageBuffer()
 	{
-		VkCommandPoolCreateInfo cmdPoolInfo;
-		cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-		cmdPoolInfo.pNext = nullptr;
-		cmdPoolInfo.queueFamilyIndex = graphicsQueueFamilyIndex;
-		cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
-			| VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
-		VkCommandPool vkCmdPool;
-		vkCreateCommandPool(vkDevice, &cmdPoolInfo, nullptr, &vkCmdPool);
-
-		*ppCommandPool = new CommandPool(this, vkCmdPool);
-
-		return HResultSuccess;
+		VkDescriptorBufferInfo descBufferInfo;
+		descBufferInfo.buffer = storageBuffer->vkBuffer;
+		descBufferInfo.offset = 0;
+		descBufferInfo.range = storageBuffer->bufferSize;
+		VkWriteDescriptorSet descWrite;
+		descWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descWrite.pNext = nullptr;
+		descWrite.dstSet = vkDescSet;
+		descWrite.descriptorCount = 1;
+		descWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		descWrite.pBufferInfo = &descBufferInfo;
+		descWrite.dstArrayElement = 0;
+		descWrite.dstBinding = 0;
+		vkUpdateDescriptorSets(vkDevice, 1, &descWrite, 0, nullptr);
 	}
-	HResult GpuDevice::CreateDescriptorPool(DescriptorPool **ppDescPool)
+	bool GpuDevice::GetMemoryTypeFromRequirements(
+		VkPhysicalDevice vkPhysicalDevice,
+		uint32 typeBits,
+		VkFlags requirementsMask,
+		uint32 *typeIndex)
 	{
-		VkDescriptorPoolSize descPoolSize[1];
-		descPoolSize[0].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-		descPoolSize[0].descriptorCount = 1;
-
-		VkDescriptorPoolCreateInfo descPoolCreateInfo;
-		descPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		descPoolCreateInfo.pNext = nullptr;
-		descPoolCreateInfo.maxSets = 1;
-		descPoolCreateInfo.poolSizeCount = 1;
-		descPoolCreateInfo.pPoolSizes = descPoolSize;
-		descPoolCreateInfo.flags = 0;
-		VkDescriptorPool vkDescPool;
-		vkCreateDescriptorPool(
+		VkPhysicalDeviceMemoryProperties memProps;
+		vkGetPhysicalDeviceMemoryProperties(vkPhysicalDevice, &memProps);
+		for (uint32 i = 0; i < memProps.memoryTypeCount; i++)
+		{
+			if (typeBits & 1)
+			{
+				if ((memProps.memoryTypes[i].propertyFlags & requirementsMask) == requirementsMask)
+				{
+					*typeIndex = i;
+					return true;
+				}
+			}
+			typeBits >>= 1;
+		}
+		return false;
+	}
+	void GpuDevice::GetAvailableSampleCount(
+		VkPhysicalDeviceProperties vkDeviceProp,
+		VkSampleCountFlagBits desiredSampleCount,
+		VkSampleCountFlagBits *availableSampleCount)
+	{
+		VkSampleCountFlagBits maxSamples = min(
+			(VkSampleCountFlagBits)vkDeviceProp.limits.framebufferColorSampleCounts,
+			(VkSampleCountFlagBits)vkDeviceProp.limits.framebufferDepthSampleCounts);
+		if (desiredSampleCount <= maxSamples)
+			*availableSampleCount = desiredSampleCount;
+		else *availableSampleCount = (VkSampleCountFlagBits)(maxSamples ^ (maxSamples >> 1));
+	}
+	HResult GpuDevice::CreateShader(
+		uint32 *code,
+		uint32 size,
+		Shader **ppShader)
+	{
+		VkShaderModuleCreateInfo moduleCreateInfo;
+		moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+		moduleCreateInfo.pNext = nullptr;
+		moduleCreateInfo.flags = 0;
+		moduleCreateInfo.codeSize = size;
+		moduleCreateInfo.pCode = code;
+		VkShaderModule vkShader;
+		CheckReturnFail(vkCreateShaderModule(
 			vkDevice,
-			&descPoolCreateInfo,
+			&moduleCreateInfo,
 			nullptr,
-			&vkDescPool);
+			&vkShader));
 
-		*ppDescPool = new DescriptorPool(this, vkDescPool);
+		*ppShader = new Shader(this, vkShader);
 
 		return HResultSuccess;
 	}
@@ -214,7 +229,7 @@ namespace gpu
 			vkFormat = VK_FORMAT_B8G8R8A8_UNORM;
 		else
 		{
-			for (msize iter = 0; iter < surfaceFormats.size(); iter++)
+			for (uint32 iter = 0; iter < surfaceFormats.size(); iter++)
 				if (surfaceFormats[iter].format == VK_FORMAT_B8G8R8A8_UNORM)
 				{
 					vkFormat = VK_FORMAT_B8G8R8A8_UNORM;
@@ -290,7 +305,7 @@ namespace gpu
 		vkSwapChainCreateInfo.preTransform = preTransform;
 		vkSwapChainCreateInfo.compositeAlpha = compositeAlpha;
 		vkSwapChainCreateInfo.imageArrayLayers = 1;
-		vkSwapChainCreateInfo.presentMode = VK_PRESENT_MODE_IMMEDIATE_KHR; //!!!
+		vkSwapChainCreateInfo.presentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
 		vkSwapChainCreateInfo.oldSwapchain = VK_NULL_HANDLE;
 		vkSwapChainCreateInfo.clipped = true;
 		vkSwapChainCreateInfo.imageColorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
@@ -337,7 +352,7 @@ namespace gpu
 			viewCreateInfo.flags = 0;
 			viewCreateInfo.image = vkImages[i];
 			viewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-			viewCreateInfo.vkFormat = vkFormat;
+			viewCreateInfo.format = vkFormat;
 			viewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_R;
 			viewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_G;
 			viewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_B;
@@ -368,7 +383,7 @@ namespace gpu
 		imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 		imageCreateInfo.pNext = nullptr;
 		imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
-		imageCreateInfo.vkFormat = vkDepthFormat;
+		imageCreateInfo.format = vkDepthFormat;
 		imageCreateInfo.extent.width = swapChainExtent.width;
 		imageCreateInfo.extent.height = swapChainExtent.height;
 		imageCreateInfo.extent.depth = 1;
@@ -394,11 +409,12 @@ namespace gpu
 		VkMemoryAllocateInfo memAlloc;
 		memAlloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		memAlloc.pNext = nullptr;
-		CheckReturn(VkGetMemoryTypeFromRequirements(
+		if (!GetMemoryTypeFromRequirements(
 			vkPhysicalDevice,
 			memReqs.memoryTypeBits,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			&memAlloc.memoryTypeIndex));
+			&memAlloc.memoryTypeIndex))
+			return HResultFail;
 		memAlloc.allocationSize = memReqs.size;
 		VkDeviceMemory vkDepthMemory;
 		CheckReturnFail(vkAllocateMemory(
@@ -417,7 +433,7 @@ namespace gpu
 		viewCreateInfo.pNext = nullptr;
 		viewCreateInfo.flags = 0;
 		viewCreateInfo.image = vkDepthImage;
-		viewCreateInfo.vkFormat = vkDepthFormat;
+		viewCreateInfo.format = vkDepthFormat;
 		viewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
 		viewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_R;
 		viewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_G;
@@ -435,20 +451,20 @@ namespace gpu
 			nullptr,
 			&vkDepthView));
 
-		// Multisampling
 		VkImage msaaColorImage;
 		VkDeviceMemory msaaColorMemory;
 		VkImageView msaaImageView;
 		VkImage msaaDepthImage;
 		VkDeviceMemory msaaDepthMemory;
 		VkImageView msaaDepthView;
-		VkGetAvailableSampleCount(vkDeviceProp, VK_SAMPLE_COUNT_8_BIT, &msaa);
+		GetAvailableSampleCount(vkDeviceProp, VK_SAMPLE_COUNT_8_BIT, &msaa);
+		if (msaa != VK_SAMPLE_COUNT_8_BIT) return HResultFail;
 
 		imageCreateInfo = {};
 		imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 		imageCreateInfo.pNext = nullptr;
 		imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
-		imageCreateInfo.vkFormat = vkSwapChainCreateInfo.imageFormat;
+		imageCreateInfo.format = vkSwapChainCreateInfo.imageFormat;
 		imageCreateInfo.extent.width = width;
 		imageCreateInfo.extent.height = height;
 		imageCreateInfo.extent.depth = 1;
@@ -467,11 +483,12 @@ namespace gpu
 			&msaaColorImage));
 
 		vkGetImageMemoryRequirements(vkDevice, msaaColorImage, &memReqs);
-		CheckReturn(VkGetMemoryTypeFromRequirements(
+		if (!GetMemoryTypeFromRequirements(
 			vkPhysicalDevice,
 			memReqs.memoryTypeBits,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			&memAlloc.memoryTypeIndex));
+			&memAlloc.memoryTypeIndex))
+			return HResultFail;
 		memAlloc.allocationSize = memReqs.size;
 
 		CheckReturnFail(vkAllocateMemory(
@@ -487,7 +504,7 @@ namespace gpu
 
 		viewCreateInfo.image = msaaColorImage;
 		viewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		viewCreateInfo.vkFormat = vkSwapChainCreateInfo.imageFormat;
+		viewCreateInfo.format = vkSwapChainCreateInfo.imageFormat;
 		viewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_R;
 		viewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_G;
 		viewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_B;
@@ -502,7 +519,7 @@ namespace gpu
 			&msaaImageView));
 
 		imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
-		imageCreateInfo.vkFormat = vkDepthFormat;
+		imageCreateInfo.format = vkDepthFormat;
 		imageCreateInfo.extent.width = width;
 		imageCreateInfo.extent.height = height;
 		imageCreateInfo.extent.depth = 1;
@@ -523,11 +540,12 @@ namespace gpu
 			vkDevice,
 			msaaDepthImage,
 			&memReqs);
-		CheckReturn(VkGetMemoryTypeFromRequirements(
+		if (!GetMemoryTypeFromRequirements(
 			vkPhysicalDevice,
 			memReqs.memoryTypeBits,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			&memAlloc.memoryTypeIndex));
+			&memAlloc.memoryTypeIndex))
+			return HResultFail;
 		memAlloc.allocationSize = memReqs.size;
 
 		CheckReturnFail(vkAllocateMemory(
@@ -543,7 +561,7 @@ namespace gpu
 
 		viewCreateInfo.image = msaaDepthImage;
 		viewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		viewCreateInfo.vkFormat = vkDepthFormat;
+		viewCreateInfo.format = vkDepthFormat;
 		viewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_R;
 		viewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_G;
 		viewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_B;
@@ -558,7 +576,7 @@ namespace gpu
 			&msaaDepthView));
 
 		VkAttachmentDescription attachments[4];
-		attachments[0].vkFormat = vkFormat;
+		attachments[0].format = vkFormat;
 		attachments[0].samples = msaa;
 		attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 		attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -568,7 +586,7 @@ namespace gpu
 		attachments[0].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		attachments[0].flags = 0;
 
-		attachments[1].vkFormat = vkDepthFormat;
+		attachments[1].format = vkDepthFormat;
 		attachments[1].samples = VK_SAMPLE_COUNT_1_BIT;
 		attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 		attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -578,7 +596,7 @@ namespace gpu
 		attachments[1].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 		attachments[1].flags = 0;
 
-		attachments[2].vkFormat = vkDepthFormat;
+		attachments[2].format = vkDepthFormat;
 		attachments[2].samples = msaa;
 		attachments[2].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 		attachments[2].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -588,7 +606,7 @@ namespace gpu
 		attachments[2].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 		attachments[2].flags = 0;
 
-		attachments[3].vkFormat = vkDepthFormat;
+		attachments[3].format = vkDepthFormat;
 		attachments[3].samples = VK_SAMPLE_COUNT_1_BIT;
 		attachments[3].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		attachments[3].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -653,7 +671,7 @@ namespace gpu
 			&renderPassCreateInfo,
 			nullptr,
 			&vkRenderPass));
-		
+
 		VkImageView imageViewAttachments[4];
 		imageViewAttachments[0] = msaaImageView;
 		imageViewAttachments[2] = msaaDepthView;
@@ -681,209 +699,6 @@ namespace gpu
 				&vkFramebuffers[i]);
 		}
 
-		/*VkImage colorImage;
-		VkDeviceMemory colorMemory;
-		VkImageView imageView;
-		VkImage depthImage;
-		VkDeviceMemory depthMemory;
-		VkImageView depthView;
-
-		imageCreateInfo = {};
-		imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-		imageCreateInfo.pNext = nullptr;
-		imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
-		imageCreateInfo.vkFormat = vkSwapChainCreateInfo.imageFormat;
-		imageCreateInfo.extent.width = width;
-		imageCreateInfo.extent.height = height;
-		imageCreateInfo.extent.depth = 1;
-		imageCreateInfo.mipLevels = 1;
-		imageCreateInfo.arrayLayers = 1;
-		imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-		imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-		imageCreateInfo.usage = VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-		imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-
-		CheckReturnFail(vkCreateImage(
-			vkDevice,
-			&imageCreateInfo,
-			nullptr,
-			&colorImage));
-
-		vkGetImageMemoryRequirements(vkDevice, colorImage, &memReqs);
-		CheckReturn(VkGetMemoryTypeFromRequirements(
-			vkPhysicalDevice,
-			memReqs.memoryTypeBits,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			&memAlloc.memoryTypeIndex));
-		memAlloc.allocationSize = memReqs.size;
-
-		CheckReturnFail(vkAllocateMemory(
-			vkDevice,
-			&memAlloc,
-			nullptr,
-			&colorMemory));
-		CheckReturnFail(vkBindImageMemory(
-			vkDevice,
-			colorImage,
-			colorMemory,
-			0));
-
-		viewCreateInfo.image = colorImage;
-		viewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		viewCreateInfo.vkFormat = vkSwapChainCreateInfo.imageFormat;
-		viewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_R;
-		viewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_G;
-		viewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_B;
-		viewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_A;
-		viewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		viewCreateInfo.subresourceRange.levelCount = 1;
-		viewCreateInfo.subresourceRange.layerCount = 1;
-		CheckReturnFail(vkCreateImageView(
-			vkDevice,
-			&viewCreateInfo,
-			nullptr,
-			&imageView));
-
-		imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
-		imageCreateInfo.vkFormat = vkDepthFormat;
-		imageCreateInfo.extent.width = width;
-		imageCreateInfo.extent.height = height;
-		imageCreateInfo.extent.depth = 1;
-		imageCreateInfo.mipLevels = 1;
-		imageCreateInfo.arrayLayers = 1;
-		imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-		imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-		imageCreateInfo.usage = VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-		imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		CheckReturnFail(vkCreateImage(
-			vkDevice,
-			&imageCreateInfo,
-			nullptr,
-			&depthImage));
-
-		vkGetImageMemoryRequirements(
-			vkDevice,
-			depthImage,
-			&memReqs);
-		CheckReturn(VkGetMemoryTypeFromRequirements(
-			vkPhysicalDevice,
-			memReqs.memoryTypeBits,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			&memAlloc.memoryTypeIndex));
-		memAlloc.allocationSize = memReqs.size;
-
-		CheckReturnFail(vkAllocateMemory(
-			vkDevice,
-			&memAlloc,
-			nullptr,
-			&depthMemory));
-		CheckReturnFail(vkBindImageMemory(
-			vkDevice,
-			depthImage,
-			depthMemory,
-			0));
-
-		viewCreateInfo.image = depthImage;
-		viewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		viewCreateInfo.vkFormat = vkDepthFormat;
-		viewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_R;
-		viewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_G;
-		viewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_B;
-		viewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_A;
-		viewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-		viewCreateInfo.subresourceRange.levelCount = 1;
-		viewCreateInfo.subresourceRange.layerCount = 1;
-		CheckReturnFail(vkCreateImageView(
-			vkDevice,
-			&viewCreateInfo,
-			nullptr,
-			&depthView));
-
-		VkAttachmentDescription attachments[2];
-		attachments[0].vkFormat = vkFormat;
-		attachments[0].samples = VK_SAMPLE_COUNT_1_BIT;
-		attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		attachments[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		attachments[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		attachments[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-		attachments[0].flags = 0;
-
-		attachments[1].vkFormat = vkDepthFormat;
-		attachments[1].samples = VK_SAMPLE_COUNT_1_BIT;
-		attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		attachments[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		attachments[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		attachments[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-		attachments[1].flags = 0;
-
-		VkAttachmentReference colorReference;
-		colorReference.attachment = 0;
-		colorReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		VkAttachmentReference depthReference;
-		depthReference.attachment = 1;
-		depthReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-		VkSubpassDescription subpass;
-		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-		subpass.flags = 0;
-		subpass.inputAttachmentCount = 0;
-		subpass.pInputAttachments = nullptr;
-		subpass.colorAttachmentCount = 1;
-		subpass.pColorAttachments = &colorReference;
-		subpass.pResolveAttachments = nullptr;
-		subpass.pDepthStencilAttachment = &depthReference;
-		subpass.preserveAttachmentCount = 0;
-		subpass.pPreserveAttachments = nullptr;
-
-		VkRenderPassCreateInfo renderPassCreateInfo;
-		renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-		renderPassCreateInfo.pNext = nullptr;
-		renderPassCreateInfo.attachmentCount = 2;
-		renderPassCreateInfo.pAttachments = attachments;
-		renderPassCreateInfo.subpassCount = 1;
-		renderPassCreateInfo.pSubpasses = &subpass;
-		renderPassCreateInfo.dependencyCount = 0;
-		renderPassCreateInfo.pDependencies = nullptr;
-		renderPassCreateInfo.flags = 0;
-		VkRenderPass vkRenderPass;
-		CheckReturnFail(vkCreateRenderPass(
-			vkDevice,
-			&renderPassCreateInfo,
-			nullptr,
-			&vkRenderPass));
-		
-		VkImageView imageViewAttachments[2];
-		imageViewAttachments[0] = imageView;
-		imageViewAttachments[1] = depthView;
-
-		VkFramebufferCreateInfo fbCreateInfo;
-		fbCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		fbCreateInfo.pNext = nullptr;
-		fbCreateInfo.renderPass = vkRenderPass;
-		fbCreateInfo.attachmentCount = 2;
-		fbCreateInfo.pAttachments = imageViewAttachments;
-		fbCreateInfo.width = vkSwapChainCreateInfo.imageExtent.width;
-		fbCreateInfo.height = vkSwapChainCreateInfo.imageExtent.height;
-		fbCreateInfo.layers = 1;
-		fbCreateInfo.flags = 0;
-
-		std::vector<VkFramebuffer> vkFramebuffers(vkImageCount);
-		for (uint32 i = 0; i < vkImageCount; i++)
-		{
-			imageViewAttachments[0] = vkViews[i];
-			vkCreateFramebuffer(
-				vkDevice,
-				&fbCreateInfo,
-				nullptr,
-				&vkFramebuffers[i]);
-		}*/
-
 		uint32 currentBuffer = 0;
 		CheckReturnFail(vkAcquireNextImageKHR(
 			vkDevice,
@@ -896,6 +711,7 @@ namespace gpu
 
 		*ppSwapChain = new SwapChain(
 			this,
+			surface,
 			vkSwapChainCreateInfo,
 			vkSwapChain,
 			vkGraphicsQueue,
@@ -908,221 +724,19 @@ namespace gpu
 			vkDepthImage,
 			vkDepthView,
 			vkDepthMemory,
+			msaaColorImage,
+			msaaColorMemory,
+			msaaImageView,
+			msaaDepthImage,
+			msaaDepthMemory,
+			msaaDepthView,
 			vkRenderPass,
 			vkFramebuffers,
 			currentBuffer);
 
 		return HResultSuccess;
 	}
-	HResult GpuDevice::CreateShader(
-		uint32 *code,
-		uint32 size,
-		Shader **ppShader)
-	{
-		VkShaderModuleCreateInfo moduleCreateInfo;
-		moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-		moduleCreateInfo.pNext = nullptr;
-		moduleCreateInfo.flags = 0;
-		moduleCreateInfo.codeSize = size;
-		moduleCreateInfo.pCode = code;
-		VkShaderModule vkShader;
-		CheckReturnFail(vkCreateShaderModule(
-			vkDevice,
-			&moduleCreateInfo,
-			nullptr,
-			&vkShader));
-
-		*ppShader = new Shader(this, vkShader);
-
-		return HResultSuccess;
-	}
 	HResult GpuDevice::CreatePipeline(
-		SwapChain* swapChain,
-		Shader *vertexShader,
-		Shader *fragmentShader,
-		Pipeline **ppPipeline)
-	{
-		VkDynamicState dynamicStateEnables[VK_DYNAMIC_STATE_RANGE_SIZE];
-		VkPipelineDynamicStateCreateInfo dynamicState;
-		dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-		dynamicState.pNext = nullptr;
-		dynamicState.pDynamicStates = dynamicStateEnables;
-		dynamicState.dynamicStateCount = 0;
-		dynamicState.flags = 0;
-
-		VkVertexInputBindingDescription viBindDesc;
-		viBindDesc.binding = 0;
-		viBindDesc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-		viBindDesc.stride = 32;
-
-		VkVertexInputAttributeDescription viAttrDesc[2];
-		viAttrDesc[0].binding = 0;
-		viAttrDesc[0].location = 0;
-		viAttrDesc[0].vkFormat = VK_FORMAT_R32G32B32A32_SFLOAT;
-		viAttrDesc[0].offset = 0;
-		viAttrDesc[1].binding = 0;
-		viAttrDesc[1].location = 1;
-		viAttrDesc[1].vkFormat = VK_FORMAT_R32G32B32A32_SFLOAT;
-		viAttrDesc[1].offset = 16;
-
-		VkPipelineVertexInputStateCreateInfo vi;
-		vi.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-		vi.pNext = nullptr;
-		vi.flags = 0;
-		vi.vertexBindingDescriptionCount = 1;
-		vi.pVertexBindingDescriptions = &viBindDesc;
-		vi.vertexAttributeDescriptionCount = 2;
-		vi.pVertexAttributeDescriptions = viAttrDesc;
-
-		VkPipelineInputAssemblyStateCreateInfo ia;
-		ia.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-		ia.pNext = nullptr;
-		ia.flags = 0;
-		ia.primitiveRestartEnable = VK_FALSE;
-		ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-
-		VkPipelineRasterizationStateCreateInfo rs;
-		rs.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-		rs.pNext = nullptr;
-		rs.flags = 0;
-		rs.polygonMode = VK_POLYGON_MODE_FILL;
-		rs.cullMode = VK_CULL_MODE_BACK_BIT;
-		rs.frontFace = VK_FRONT_FACE_CLOCKWISE;
-		rs.depthClampEnable = VK_FALSE;
-		rs.rasterizerDiscardEnable = VK_FALSE;
-		rs.depthBiasEnable = VK_FALSE;
-		rs.depthBiasConstantFactor = 0;
-		rs.depthBiasClamp = 0;
-		rs.depthBiasSlopeFactor = 0;
-		rs.lineWidth = 1.0f;
-
-		VkPipelineColorBlendStateCreateInfo cb;
-		cb.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-		cb.pNext = nullptr;
-		cb.flags = 0;
-		VkPipelineColorBlendAttachmentState attState[1];
-		attState[0].colorWriteMask = VK_COLOR_COMPONENT_R_BIT
-			| VK_COLOR_COMPONENT_G_BIT
-			| VK_COLOR_COMPONENT_B_BIT
-			| VK_COLOR_COMPONENT_A_BIT;
-		attState[0].blendEnable = VK_TRUE;
-		attState[0].colorBlendOp = VK_BLEND_OP_ADD;
-		attState[0].srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-		attState[0].dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-		attState[0].alphaBlendOp = VK_BLEND_OP_MAX;
-		attState[0].srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-		attState[0].dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-		cb.attachmentCount = 1;
-		cb.pAttachments = attState;
-		cb.logicOpEnable = VK_FALSE;
-		cb.logicOp = VK_LOGIC_OP_NO_OP;
-		cb.blendConstants[0] = 0.0f;
-		cb.blendConstants[1] = 0.0f;
-		cb.blendConstants[2] = 0.0f;
-		cb.blendConstants[3] = 0.0f;
-
-		VkPipelineViewportStateCreateInfo vp;
-		vp.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-		vp.pNext = nullptr;
-		vp.flags = 0;
-		vp.viewportCount = 1;
-		dynamicStateEnables[dynamicState.dynamicStateCount++] = VK_DYNAMIC_STATE_VIEWPORT;
-		vp.scissorCount = 1;
-		dynamicStateEnables[dynamicState.dynamicStateCount++] = VK_DYNAMIC_STATE_SCISSOR;
-		vp.pScissors = nullptr;
-		vp.pViewports = nullptr;
-
-		VkPipelineDepthStencilStateCreateInfo ds;
-		ds.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-		ds.pNext = nullptr;
-		ds.flags = 0;
-		ds.depthTestEnable = VK_TRUE;
-		ds.depthWriteEnable = VK_TRUE;
-		ds.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
-		ds.depthBoundsTestEnable = VK_FALSE;
-		ds.minDepthBounds = 0;
-		ds.maxDepthBounds = 0;
-		ds.stencilTestEnable = VK_FALSE;
-		ds.back.failOp = VK_STENCIL_OP_KEEP;
-		ds.back.passOp = VK_STENCIL_OP_KEEP;
-		ds.back.compareOp = VK_COMPARE_OP_ALWAYS;
-		ds.back.compareMask = 0;
-		ds.back.reference = 0;
-		ds.back.depthFailOp = VK_STENCIL_OP_KEEP;
-		ds.back.writeMask = 0;
-		ds.front = ds.back;
-
-		VkPipelineMultisampleStateCreateInfo ms;
-		ms.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-		ms.pNext = nullptr;
-		ms.flags = 0;
-		ms.pSampleMask = nullptr;
-		ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-		ms.sampleShadingEnable = VK_FALSE;
-		ms.alphaToCoverageEnable = VK_FALSE;
-		ms.alphaToOneEnable = VK_FALSE;
-		ms.minSampleShading = 0.0;
-
-		VkDescriptorSetLayoutBinding layoutBinding;
-		layoutBinding.binding = 0;
-		layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		layoutBinding.descriptorCount = 1;
-		layoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-		layoutBinding.pImmutableSamplers = nullptr;
-
-		VkGraphicsPipelineCreateInfo pipelineCreateInfo;
-		pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-		pipelineCreateInfo.pNext = nullptr;
-		pipelineCreateInfo.layout = vkPipelineLayout;
-		pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
-		pipelineCreateInfo.basePipelineIndex = 0;
-		pipelineCreateInfo.flags = 0;
-		pipelineCreateInfo.pVertexInputState = &vi;
-		pipelineCreateInfo.pInputAssemblyState = &ia;
-		pipelineCreateInfo.pRasterizationState = &rs;
-		pipelineCreateInfo.pColorBlendState = &cb;
-		pipelineCreateInfo.pTessellationState = nullptr;
-		pipelineCreateInfo.pMultisampleState = &ms;
-		pipelineCreateInfo.pDynamicState = &dynamicState;
-		pipelineCreateInfo.pViewportState = &vp;
-		pipelineCreateInfo.pDepthStencilState = &ds;
-		VkPipelineShaderStageCreateInfo shaderStages[2];
-		shaderStages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		shaderStages[0].pNext = nullptr;
-		shaderStages[0].pSpecializationInfo = nullptr;
-		shaderStages[0].flags = 0;
-		shaderStages[0].module = vertexShader->vkShader;
-		shaderStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-		shaderStages[0].pName = "main";
-		shaderStages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		shaderStages[1].pNext = nullptr;
-		shaderStages[1].pSpecializationInfo = nullptr;
-		shaderStages[1].flags = 0;
-		shaderStages[1].module = fragmentShader->vkShader;
-		shaderStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-		shaderStages[1].pName = "main";
-		pipelineCreateInfo.pStages = shaderStages;
-		pipelineCreateInfo.stageCount = 2;
-		pipelineCreateInfo.renderPass = swapChain->vkRenderPass;
-		pipelineCreateInfo.subpass = 0;
-		VkPipeline vkPipeline;
-		CheckReturnFail(vkCreateGraphicsPipelines(
-			vkDevice,
-			VK_NULL_HANDLE,
-			1,
-			&pipelineCreateInfo,
-			nullptr,
-			&vkPipeline));
-
-		*ppPipeline = new Pipeline(
-			this,
-			swapChain,
-			vkPipelineLayout,
-			vkPipeline);
-
-		return HResultSuccess;
-	}
-	HResult GpuDevice::CreateRenderTargetPipelines(
 		SwapChain *swapChain,
 		Shader *vertexShader,
 		Shader *fragmentShader,
@@ -1144,7 +758,7 @@ namespace gpu
 		VkVertexInputAttributeDescription viAttrDesc[2];
 		viAttrDesc[0].binding = 0;
 		viAttrDesc[0].location = 0;
-		viAttrDesc[0].vkFormat = VK_FORMAT_R32G32_SFLOAT;
+		viAttrDesc[0].format = VK_FORMAT_R32G32_SFLOAT;
 		viAttrDesc[0].offset = 0;
 
 		VkPipelineVertexInputStateCreateInfo vi;
@@ -1183,7 +797,8 @@ namespace gpu
 		cb.pNext = nullptr;
 		cb.flags = 0;
 		VkPipelineColorBlendAttachmentState attState[1];
-		attState[0].colorWriteMask = VK_COLOR_COMPONENT_R_BIT
+		attState[0].colorWriteMask =
+			VK_COLOR_COMPONENT_R_BIT
 			| VK_COLOR_COMPONENT_G_BIT
 			| VK_COLOR_COMPONENT_B_BIT
 			| VK_COLOR_COMPONENT_A_BIT;
@@ -1298,10 +913,28 @@ namespace gpu
 
 		return HResultSuccess;
 	}
+	HResult GpuDevice::CreateCommandBuffer(CommandBuffer **ppCommandBuffer)
+	{
+		VkCommandBufferAllocateInfo cmd;
+		cmd.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		cmd.pNext = nullptr;
+		cmd.commandPool = vkCmdPool;
+		cmd.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		cmd.commandBufferCount = 1;
+		VkCommandBuffer vkCmdBuffer;
+		CheckReturnFail(vkAllocateCommandBuffers(
+			vkDevice,
+			&cmd,
+			&vkCmdBuffer));
+
+		*ppCommandBuffer = new CommandBuffer(this, vkCmdBuffer);
+
+		return HResultSuccess;
+	}
 	HResult GpuDevice::CreateBuffer(
 		VkBufferUsageFlags vkBufferType,
 		uint32 memoryTypeBits,
-		msize size,
+		uint32 size,
 		Buffer **ppBuffer)
 	{
 		VkBuffer vkBuffer;
@@ -1326,11 +959,12 @@ namespace gpu
 		VkMemoryAllocateInfo allocInfo;
 		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		allocInfo.pNext = nullptr;
-		CheckReturn(VkGetMemoryTypeFromRequirements(
+		if (!GetMemoryTypeFromRequirements(
 			vkPhysicalDevice,
 			vkMemReqs.memoryTypeBits,
 			memoryTypeBits,
-			&allocInfo.memoryTypeIndex));
+			&allocInfo.memoryTypeIndex))
+			return HResultFail;
 		allocInfo.allocationSize = vkMemReqs.size;
 		CheckReturnFail(vkAllocateMemory(
 			vkDevice,
@@ -1353,44 +987,52 @@ namespace gpu
 
 		return HResultSuccess;
 	}
+	VkInstance GpuDevice::GetVkInstance()
+	{
+		return vkInstance;
+	}
 	HResult GpuDevice::CreateRenderTarget(
-		SwapChain *swapChain,
-		CommandBuffer *cmdBuffer,
+		uint32 width,
+		uint32 height,
+		Surface *surface,
 		RenderTarget **ppRenderTarget)
 	{
-		
+		SwapChain *swapChain;
+		CheckReturn(CreateSwapChain(
+			width,
+			height,
+			surface,
+			&swapChain));
+
+		CommandBuffer *cmdBuffer;
+		CheckReturn(CreateCommandBuffer(&cmdBuffer));
+
+		Buffer *vertexBuffer;
+		CreateBuffer(
+			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+			RenderTarget::vertexBufferSize,
+			&vertexBuffer);
+
 		Shader *vertexShader, *fragmentShader;
-		std::vector<int8> vertexSPV, fragmentSPV;
-		std::fstream file;
-		file.open(L"shaders\\general vertex shader.spv", std::ios::in | std::ios::binary);
-		file.seekg(0, std::ios::end);
-		vertexSPV.resize(file.tellg());
-		file.seekg(0, std::ios::beg);
-		file.read(vertexSPV.data(), vertexSPV.size());
-		file.close();
-		file.open(L"shaders\\general fragment shader.spv", std::ios::in | std::ios::binary);
-		file.seekg(0, std::ios::end);
-		fragmentSPV.resize(file.tellg());
-		file.seekg(0, std::ios::beg);
-		file.read(fragmentSPV.data(), fragmentSPV.size());
-		file.close();
 		CreateShader(
-			reinterpret_cast<uint32 *>(vertexSPV.data()),
-			vertexSPV.size(),
+			Reinterpret<uint32 *>(const_cast<uint8 *>(vertexShaderData)),
+			sizeof(vertexShaderData),
 			&vertexShader);
 		CreateShader(
-			reinterpret_cast<uint32 *>(fragmentSPV.data()),
-			fragmentSPV.size(),
+			Reinterpret<uint32 *>(const_cast<uint8 *>(fragmentShaderData)),
+			sizeof(fragmentShaderData),
 			&fragmentShader);
 
 		Pipeline *pipeline;
-		CheckReturn(CreateRenderTargetPipelines(
+		CheckReturn(CreatePipeline(
 			swapChain,
 			vertexShader,
 			fragmentShader,
 			&pipeline));
 
 		*ppRenderTarget = new RenderTarget(
+			this,
 			swapChain,
 			vertexBuffer,
 			cmdBuffer,
@@ -1412,7 +1054,8 @@ namespace gpu
 		uint32 count,
 		GradientCollection **ppGradientCollection)
 	{
-		msize memOffset = AllocateMemory(count * sizeof(GradientStop));
+		if (count == 0) return HResultInvalidArgument;
+		uint32 memOffset = AllocateMemory(count * sizeof(GradientStop));
 		void *mapped;
 		MapMemory(memOffset, count * sizeof(GradientStop), &mapped);
 		memcpy(mapped, stops, count * sizeof(GradientStop));

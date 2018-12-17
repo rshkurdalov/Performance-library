@@ -8,7 +8,6 @@ namespace graphics
 {
 	class Color
 	{
-		typedef uint8 ValTy;
 	public:
 		enum EnumColor
 		{
@@ -154,27 +153,42 @@ namespace graphics
 			YellowGreen = 0x9ACD32,
 		};
 
-		ValTy r;
-		ValTy g;
-		ValTy b;
-		ValTy a;
+		union
+		{
+			struct
+			{
+				uint8 r;
+				uint8 g;
+				uint8 b;
+				uint8 a;
+			};
+			uint32 code;
+		};
 
 		Color() {}
-		Color(ValTy r, ValTy g, ValTy b, ValTy a = 255)
+		Color(uint8 r, uint8 g, uint8 b, uint8 a = 255)
 		{
 			this->r = r;
 			this->g = g;
 			this->b = b;
 			this->a = a;
 		}
-		Color(uint32 color, ValTy a = 255)
+		Color(uint32 color, uint8 a = 255)
 		{
 			this->r = ((color >> 16) & 0xff);
 			this->g = ((color >> 8) & 0xff);
 			this->b = (color & 0xff);
 			this->a = a;
 		}
-		Color(EnumColor color, ValTy a = 255)
+		Color(EnumColor color, uint8 a = 255)
 			: Color((uint32)color, a) {}
+		bool operator==(Color value)
+		{
+			return code == value.code;
+		}
+		bool operator!=(Color value)
+		{
+			return code != value.code;
+		}
 	};
 }

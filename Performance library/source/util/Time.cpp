@@ -4,118 +4,70 @@
 #include "util\Time.h"
 #include "util\AsyncTimer.h"
 #include "util\CallbackTimer.h"
-
-using namespace std;
-using namespace chrono;
+#include <chrono>
 
 namespace util
 {
-    concurrency::critical_section Time::criticalSection;
-    condition_variable Time::waitPoint;
-    multimap<int64, CallbackTimer *> Time::timers;
-    thread _timerThread(Time::timerProcessThread);
-
+	int64 Time::Now()
+	{
+		return std::chrono::high_resolution_clock::now().time_since_epoch().count();
+	}
 	void Time::CreateAsyncTimer(
-		int64 periodNanoseconds,
+		int64 period,
 		AsyncTimer **ppTimer)
 	{
 		*ppTimer = new AsyncTimer();
-		(*ppTimer)->period = periodNanoseconds;
+		(*ppTimer)->period = period;
 	}
-
 	void Time::CreateCallbackTimer(
-		std::function<void(TimerEvent &)> callback,
-		int64 periodMicroseconds,
+		Function<void(TimerEvent *)> callback,
+		void *param,
+		int64 period,
 		CallbackTimer **ppTimer)
 	{
 		CallbackTimer *timer = new CallbackTimer();
-		timer->period = periodMicroseconds;
 		timer->callback = callback;
+		timer->param = param;
+		timer->period = period;
 		timer->state = TimerStateInactive;
 		*ppTimer = timer;
 	}
-
 	void Time::DoCallbackIn(
-		std::function<void()> callback,
-		int64 delayMicroseconds)
+		Function<void(void *)> callback,
+		void *param,
+		int64 delay)
 	{
 		CallbackTimer *timer = new CallbackTimer();
-		timer->period = delayMicroseconds;
-		timer->callback = [timer, callback](TimerEvent &e) -> void
+		timer->period = delay;
+		struct OverlayParams
 		{
-			callback();
-			timer->Release();
-			e.stop = true;
+			Function<void(void *)> callback;
+			void *callbackParam;
+			CallbackTimer *timer;
+		} op;
+		op.callback = callback;
+		op.callbackParam = param;
+		op.timer = timer;
+		static void(*overlayCallback)(TimerEvent *) = [](TimerEvent *e) -> void
+		{
+			OverlayParams *op = (OverlayParams *)e->param;
+			op->callback(op->callbackParam);
+			op->timer->Unref();
+			e->stop = true;
 		};
+		timer->callback = overlayCallback;
 		timer->state = TimerStateInactive;
 		timer->Start();
+		timer->Unref();
 	}
-
 	void Time::DoCallbackAt(
-		std::function<void()> callback,
-		int64 timestampMicroseconds)
+		Function<void(void *)> callback,
+		void *param,
+		int64 timestamp)
 	{
-		CallbackTimer *timer = new CallbackTimer();
-		timer->callback = [timer, callback](TimerEvent &e) -> void
-		{
-			callback();
-			timer->Release();
-			e.stop = true;
-		};
-		Time::criticalSection.lock();
-		Time::timers.insert(pair<int64, CallbackTimer *>(
-			timestampMicroseconds, timer));
-		Time::criticalSection.unlock();
+		DoCallbackIn(
+			callback,
+			param,
+			timestamp - Now());
 	}
-
-	void Time::timerProcessThread()
-    {
-        _timerThread.detach();
-        multimap<int64, CallbackTimer *>::const_iterator iter;
-        CallbackTimer *alarmedTimer;
-        mutex timerMutex;
-        unique_lock<mutex> locker(timerMutex);
-		int64 timePoint = duration_cast<microseconds>(high_resolution_clock::now().time_since_epoch()).count();
-        CallbackTimer defaultTimer;
-        defaultTimer.period = 1000000000;
-        defaultTimer.callback = [] (TimerEvent &e) -> void {};
-        timers.insert(pair<int64, CallbackTimer *>(
-            timePoint + defaultTimer.period,
-            &defaultTimer));
-        while(true)
-        {
-            criticalSection.lock();
-            timePoint = duration_cast<microseconds>
-                (high_resolution_clock::now().time_since_epoch()).count();
-            iter = timers.begin();
-            while(timePoint >= iter->first)
-            {
-                alarmedTimer = iter->second;
-                alarmedTimer->AddRef();
-                timers.erase(iter);
-                alarmedTimer->Lock();
-                criticalSection.unlock();
-				TimerEvent e;
-				e.nextPeriod = alarmedTimer->period;
-				alarmedTimer->callback(e);
-                if(!e.stop)
-                {
-					alarmedTimer->period = e.nextPeriod;
-                    alarmedTimer->nextAlarm += alarmedTimer->period;
-                    timers.insert(
-                        std::pair<int64, CallbackTimer *>(
-                            alarmedTimer->nextAlarm, alarmedTimer));
-                }
-                else alarmedTimer->state = TimerStateInactive;
-                alarmedTimer->Unlock();
-                alarmedTimer->Release();
-                criticalSection.lock();
-                iter = timers.begin();
-            }
-            criticalSection.unlock();
-            waitPoint.wait_until(
-                locker,
-                time_point<steady_clock>(microseconds(iter->first)));
-        }
-    }
 }

@@ -2,7 +2,9 @@
 // This file is under The Clear BSD License, see LICENSE.txt
 
 #pragma once
+#pragma warning(disable: 4455)
 #include "kernel\kernel.h"
+#include <float.h>
 
 namespace ui
 {
@@ -19,7 +21,6 @@ namespace ui
 	// in case auto size is not supported, value in structure may be used as default.
 	struct UISize
 	{
-	public:
 		float32 value;
 		UISizeType sizeType;
 
@@ -31,7 +32,8 @@ namespace ui
 			sizeType(sizeType) {}
 		inline float32 evaluate(float32 parentSize)
 		{
-			if (sizeType == sizeType) return value*parentSize;
+			if (sizeType == UISizeTypeRelative)
+				return value*parentSize;
 			else return value;
 		}
 		bool operator == (UISize &size)
@@ -44,6 +46,14 @@ namespace ui
 			return !(*this == size);
 		}
 	};
+	inline UISize operator""em(long double value)
+	{
+		return UISize((float32)value, UISizeTypeRelative);
+	}
+	inline UISize autosize(float32 defaultSize = FLT_MAX)
+	{
+		return UISize(defaultSize, UISizeTypeAuto);
+	}
 	
 	enum HorizontalAlign
 	{
@@ -65,20 +75,6 @@ namespace ui
 		FlowAxisY,
 	};
 
-	enum FlowLineBreak
-	{
-
-		// Objects are split into lines
-		// without losing their order
-		FlowLineBreakAlignIncremental,
-		// Line breaks only in case of overflow
-		FlowLineBreakOverflow,
-		// Only first line is generated
-		FlowLineBreakFirstLine,
-		// Line never breaks
-		FlowLineBreakNoBreak,
-	};
-
 	enum MouseButton
 	{
 		MouseButtonNone,
@@ -89,11 +85,29 @@ namespace ui
 		MouseButtonX2,
 	};
 
-#define UI_EVENT_MASK_HANDLE_NONE 0x00000000
-#define UI_EVENT_MOUSE_CLICK_FLAG(button) (1 << button)
-#define UI_EVENT_MOUSE_HOVER_FLAG 0x00000100
-#define UI_EVENT_MOUSE_WHEEL_ROTATE_FLAG 0x00000200
-#define UI_EVENT_MASK_HANDLE_ALL 0xffffffff
+	enum KeyCode
+	{
+		KeyCodeBackspace = 8,
+		KeyCodeTab = 9,
+		KeyCodeEnter = 13,
+		KeyCodeLeft = 37,
+		KeyCodeUp = 38,
+		KeyCodeRight = 39,
+		KeyCodeDown = 40,
+	};
 
-#define UI_EPSILON 1e-2f
+	enum UIHook
+	{
+		UIHookMouseButtonLeft = 1 << MouseButtonLeft,
+		UIHookMouseButtonRight = 1 << MouseButtonRight,
+		UIHookMouseButtonWheel = 1 << MouseButtonWheel,
+		UIHookMouseButtonX1 = 1 << MouseButtonX1,
+		UIHookMouseButtonX2 = 1 << MouseButtonX2,
+		UIHookMouseButtonAll = 63,
+		UIHookMouseHover = 1 << 6,
+		UIHookMouseWhellRotation = 1 << 7,
+		UIHookAll = 255,
+	};
+
+	const float32 UIEps = 1e-2f;
 }

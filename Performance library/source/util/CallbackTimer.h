@@ -6,23 +6,33 @@
 
 namespace util
 {
+	HResult TimerProcessInitialize();
+
     class CallbackTimer : public SharedObject
     {
         friend class Time;
+		friend HResult TimerProcessInitialize();
+		friend void timerProcessFunction();
     protected:
+		Function<void(TimerEvent *)> callback;
+		void *param;
         int64 period;
 		int64 nextAlarm;
-        std::function<void(TimerEvent &)> callback;
-		aligned(TimerState) state;
+		TimerState state;
 
         CallbackTimer() {}
         ~CallbackTimer();
 	public:
+		// Has no effect if timer is not inactive
         void Start();
+		// Has no effect if timer is not active
         void Pause();
+		// Has no effect if timer is not paused
         void Resume();
+		// Stops and starts timer
         void Refresh();
+		// Paused timers also will become inactive
         void Stop();
-        TimerState GetTimerState();
+        TimerState GetState();
     };
 }

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -27,18 +27,16 @@
     <ClInclude Include="source\gpu\Bitmap.h" />
     <ClInclude Include="source\gpu\Buffer.h" />
     <ClInclude Include="source\gpu\CommandBuffer.h" />
-    <ClInclude Include="source\gpu\CommandPool.h" />
-    <ClInclude Include="source\gpu\DescriptorPool.h" />
-    <ClInclude Include="source\gpu\DescriptorSet.h" />
     <ClInclude Include="source\gpu\GpuDevice.h" />
     <ClInclude Include="source\gpu\GpuMemoryManager.h" />
     <ClInclude Include="source\gpu\GradientCollection.h" />
     <ClInclude Include="source\gpu\Pipeline.h" />
     <ClInclude Include="source\gpu\RenderTarget.h" />
     <ClInclude Include="source\gpu\Shader.h" />
+    <ClInclude Include="source\gpu\ShaderData.h" />
     <ClInclude Include="source\gpu\Surface.h" />
     <ClInclude Include="source\gpu\SwapChain.h" />
-    <ClInclude Include="source\gpu\VulkanAPI.h" />
+    <ClInclude Include="source\gpu\GpuManager.h" />
     <ClInclude Include="source\graphics\Color.h" />
     <ClInclude Include="source\graphics\Font.h" />
     <ClInclude Include="source\graphics\Geometry.h" />
@@ -50,9 +48,18 @@
     <ClInclude Include="source\kernel\SharedObject.h" />
     <ClInclude Include="source\math\MathBase.h" />
     <ClInclude Include="source\math\VectorMath.h" />
-    <ClInclude Include="source\Scene.h" />
+    <ClInclude Include="source\ui\CheckBox.h" />
+    <ClInclude Include="source\ui\FlowLayout.h" />
+    <ClInclude Include="source\ui\ImageView.h" />
+    <ClInclude Include="source\ui\LayoutButton.h" />
+    <ClInclude Include="source\ui\OptionList.h" />
+    <ClInclude Include="source\ui\PushButton.h" />
+    <ClInclude Include="source\ui\RadioButton.h" />
     <ClInclude Include="source\ui\ScrollBar.h" />
+    <ClInclude Include="source\ui\TextField.h" />
     <ClInclude Include="source\ui\UIEventArgs.h" />
+    <ClInclude Include="source\ui\UIFactory.h" />
+    <ClInclude Include="source\ui\UIManager.h" />
     <ClInclude Include="source\ui\UIObject.h" />
     <ClInclude Include="source\ui\UITypes.h" />
     <ClInclude Include="source\ui\Window.h" />
@@ -67,9 +74,6 @@
     <ClCompile Include="source\gpu\Bitmap.cpp" />
     <ClCompile Include="source\gpu\Buffer.cpp" />
     <ClCompile Include="source\gpu\CommandBuffer.cpp" />
-    <ClCompile Include="source\gpu\CommandPool.cpp" />
-    <ClCompile Include="source\gpu\DescriptorPool.cpp" />
-    <ClCompile Include="source\gpu\DescriptorSet.cpp" />
     <ClCompile Include="source\gpu\GpuDevice.cpp" />
     <ClCompile Include="source\gpu\GpuMemoryManager.cpp" />
     <ClCompile Include="source\gpu\GradientCollection.cpp" />
@@ -78,7 +82,7 @@
     <ClCompile Include="source\gpu\Shader.cpp" />
     <ClCompile Include="source\gpu\Surface.cpp" />
     <ClCompile Include="source\gpu\SwapChain.cpp" />
-    <ClCompile Include="source\gpu\VulkanAPI.cpp" />
+    <ClCompile Include="source\gpu\GpuManager.cpp" />
     <ClCompile Include="source\graphics\Font.cpp" />
     <ClCompile Include="source\graphics\Geometry.cpp" />
     <ClCompile Include="source\graphics\GeometryPath.cpp" />
@@ -87,12 +91,26 @@
     <ClCompile Include="source\kernel\OperatingSystemAPI.cpp" />
     <ClCompile Include="source\kernel\SharedObject.cpp" />
     <ClCompile Include="source\Main.cpp" />
-    <ClCompile Include="source\Scene.cpp" />
+    <ClCompile Include="source\ui\CheckBox.cpp" />
+    <ClCompile Include="source\ui\FlowLayout.cpp" />
+    <ClCompile Include="source\ui\ImageView.cpp" />
+    <ClCompile Include="source\ui\LayoutButton.cpp" />
+    <ClCompile Include="source\ui\OptionList.cpp" />
+    <ClCompile Include="source\ui\PushButton.cpp" />
+    <ClCompile Include="source\ui\RadioButton.cpp" />
+    <ClCompile Include="source\ui\ScrollBar.cpp" />
+    <ClCompile Include="source\ui\TextField.cpp" />
+    <ClCompile Include="source\ui\UIFactory.cpp" />
+    <ClCompile Include="source\ui\UIManager.cpp" />
     <ClCompile Include="source\ui\UIObject.cpp" />
     <ClCompile Include="source\ui\Window.cpp" />
     <ClCompile Include="source\util\AsyncTimer.cpp" />
     <ClCompile Include="source\util\CallbackTimer.cpp" />
     <ClCompile Include="source\util\Time.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\plane fragment shader.frag" />
+    <None Include="shaders\plane vertex shader.vert" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
@@ -118,7 +136,7 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
-    <CharacterSet>MultiByte</CharacterSet>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -153,6 +171,7 @@
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>$(ProjectDir)\source;$(ProjectDir)\dependencies;$(ProjectDir)\dependencies\freetype;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -160,7 +179,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <ConformanceMode>true</ConformanceMode>
+      <ConformanceMode>false</ConformanceMode>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -172,6 +191,7 @@
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>$(ProjectDir)\source;$(ProjectDir)\dependencies;$(ProjectDir)\dependencies\freetype;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>

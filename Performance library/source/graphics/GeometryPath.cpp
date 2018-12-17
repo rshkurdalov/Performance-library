@@ -9,13 +9,13 @@ namespace graphics
 	{
 		count = 0;
 	}
-	Vector2f GeometryPath::LastPoint()
-	{
-		return Vector2f(data[data.size() - 2], data[data.size() - 1]);
-	}
 	bool GeometryPath::IsEmpty()
 	{
 		return data.size() == 0;
+	}
+	Vector2f GeometryPath::LastPoint()
+	{
+		return Vector2f(data[data.size() - 2], data[data.size() - 1]);
 	}
 	void GeometryPath::Reset()
 	{
@@ -29,7 +29,7 @@ namespace graphics
 		data.push_back(controlPoint.y);
 		count++;
 	}
-	void GeometryPath::AddLine(Vector2f controlPoint)
+	void GeometryPath::PushLine(Vector2f controlPoint)
 	{
 		if (controlPoint == LastPoint()) return;
 		data.push_back(Reinterpret<float32>(uint32(geometryTypeLine)));
@@ -37,7 +37,7 @@ namespace graphics
 		data.push_back(controlPoint.y);
 		count++;
 	}
-	void GeometryPath::AddQuadraticBezier(
+	void GeometryPath::PushQuadraticBezier(
 		Vector2f controlPoint1,
 		Vector2f controlPoint2)
 	{
@@ -47,8 +47,8 @@ namespace graphics
 		float64 c = v1[0] * v2[1] - v1[1] * v2[0];
 		if (c == 0.0)
 		{
-			AddLine(controlPoint1);
-			AddLine(controlPoint2);
+			PushLine(controlPoint1);
+			PushLine(controlPoint2);
 			return;
 		}
 		data.push_back(Reinterpret<float32>(uint32(geometryTypeQuadraticBezier)));
@@ -58,12 +58,12 @@ namespace graphics
 		data.push_back(controlPoint2.y);
 		count++;
 	}
-	void GeometryPath::AddCubicBezier(
+	void GeometryPath::PushCubicBezier(
 		Vector2f controlPoint1,
 		Vector2f controlPoint2,
 		Vector2f controlPoint3)
 	{
-		static constexpr float32 t = 0.5f;
+		constexpr float32 t = 0.5f;
 		Vector2f controlPoint0 = Reinterpret<Vector2f>(data[data.size()-2]),
 			l = (1.0f / 16.0f)*(controlPoint0 - 3.0f * controlPoint1 + 3.0f * controlPoint2 - controlPoint3),
 			m = (1.0f / 16.0f)*(3.0f * controlPoint0 + 9.0f * controlPoint1 - 3.0f * controlPoint2 - controlPoint3),
@@ -72,10 +72,10 @@ namespace graphics
 				+ (3.0f*t)*controlPoint1) + (3.0f*t*t)*controlPoint2) + (t*t*t)*controlPoint3),
 			q1 = l * t + m - b * t / (2.0f * (t - 1.0f)),
 			q3 = l * (t + 1.0f) + n - b * (t - 1.0f) / (2.0f * t);
-		AddQuadraticBezier(q1, b);
-		AddQuadraticBezier(q3, controlPoint3);
+		PushQuadraticBezier(q1, b);
+		PushQuadraticBezier(q3, controlPoint3);
 	}
-	void GeometryPath::AddArcSegment(
+	void GeometryPath::PushArcSegment(
 		Vector2f controlPoint,
 		float32 radiusX,
 		float32 radiusY,
@@ -102,11 +102,12 @@ namespace graphics
 		data.push_back(data[data.size() - 1]);
 		data.push_back(controlPoint.x);
 		data.push_back(controlPoint.y);
+
 		count++;
 	}
-	void GeometryPath::Append(GeometryPath *path)
+	void GeometryPath::Append(GeometryPath &path)
 	{
-		data.insert(data.end(), path->data.begin(), path->data.end());
-		count += path->count;
+		data.insert(data.end(), path.data.begin(), path.data.end());
+		count += path.count;
 	}
 }

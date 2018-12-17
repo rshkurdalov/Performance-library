@@ -2,155 +2,87 @@
 // This file is under The Clear BSD License, see LICENSE.txt
 
 #include "ui\Window.h"
+#include "ui\UIManager.h"
 #include "ui\UIObject.h"
-/*#include "UIFactory.h"
-#include "ScrollBar.h"
-#include "Layout.h"
-#include "CallbackTimer.h"*/
+#include "kernel\OperatingSystemAPI.h"
 
 namespace ui
 {
     Window::Window(
-        uint32 width,
-        uint32 height,
-		msize hwnd)
+		uint64 hwnd,
+		uint32 width,
+		uint32 height,
+		RenderTarget *rt,
+		UIObject *layout)
     {
 		this->hwnd = hwnd;
         this->width = width;
         this->height = height;
-
-        /*uiFactory = new UIFactory(this);
-        context = nullptr;
-        closeContextCondition = [this] (UIMouseEvent *e) -> void
-        {
-            if(!HitTest(context)->Inside(e->x, e->y))
-                CloseContext();
-        };*/
-        focusedObject = nullptr;
-        hoveredObject = nullptr;
-        draggedObject = nullptr;
-
-        /*onMouseClick.AddCallback([this] (UIMouseEvent *e) -> void
-        {
-            if(draggedObject != nullptr) return;
-            UIObject *receiver = HitTest();
-            if((e->button == MouseButtonLeft || e->button == MouseButtonRight)
-                && focusedObject != receiver)
-            {
-                if(focusedObject != nullptr)
-                    focusedObject->onFocusLoss.Notify(e);
-                if(receiver->focusable)
-                {
-                    focusedObject = receiver;
-                    receiver->onFocusReceive.Notify(e);
-                }
-                else focusedObject = nullptr;
-            }
-            receiver->onMouseClick.Notify(e);
-        });
-
-        onMouseMove.AddCallback([this] (UIMouseEvent *e) -> void
-        {
-            UIObject *receiver = HitTest();
-            if(hoveredObject != receiver)
-            {
-                hoveredObject->onEndHover.Notify(e);
-                hoveredObject = receiver;
-                hoveredObject->onStartHover.Notify(e);
-            }
-            if(draggedObject != nullptr)
-            {
-                draggedObject->onMouseMove.Notify(e);
-                return;
-            }
-            receiver->onMouseMove.Notify(e);
-        });
-
-        onMouseRelease.AddCallback([this] (UIMouseEvent *e) -> void
-        {
-            if(draggedObject != nullptr && e->button == MouseButtonLeft)
-            {
-                draggedObject->onMouseRelease.Notify(e);
-                draggedObject = nullptr;
-                return;
-            }
-            UIObject *receiver = HitTest();
-            receiver->onMouseRelease.Notify(e);
-        });
-
-        onMouseWheelRotate.AddCallback([this] (UIMouseWheelEvent *e) -> void
-        {
-            UIObject *receiver = HitTest();
-            receiver->onMouseWheelRotate.Notify(e);
-        });
-
-        onKeyPress.AddCallback([this] (UIKeyboardEvent *e) -> void
-        {
-            if(draggedObject != nullptr) return;
-            if(focusedObject != nullptr && focusedObject->enabled)
-                focusedObject->onKeyPress.Notify(e);
-        });
-
-        onKeyRelease.AddCallback([this] (UIKeyboardEvent *e) -> void
-        {
-            if(draggedObject != nullptr) return;
-            if(focusedObject != nullptr && focusedObject->enabled)
-                focusedObject->onKeyRelease.Notify(e);
-        });
-
-        onCharInput.AddCallback([this] (UIKeyboardEvent *e) -> void
-        {
-            if(draggedObject != nullptr) return;
-            if(focusedObject != nullptr && focusedObject->enabled)
-                focusedObject->onCharInput.Notify(e);
-        });*/
+		layout->AddRef();
+		this->layout = layout;
+		layout->SetWindow(this);
+		layout->SetPosition(Vector2f(0.0f, 0.0f));
+		layout->SetWidthDesc((float32)width);
+		layout->SetHeightDesc((float32)height);
+		layout->Prepare(layout->GetWidthDesc().value, layout->GetHeightDesc().value);
+		rt->AddRef();
+		this->rt = rt;
     }
     Window::~Window()
     {
-
+		OSReleaseWindowHandler(this);
+		layout->SetWindow(nullptr);
+		layout->Unref();
     }
-    UIObject *Window::HitTest()
-    {
-        UIObject *hitTest;
-        for(size_t iter = foregroundObjects.size(); iter != 0; iter--)
-        {
-            if(foregroundObjects[iter - 1]->ContainsPoint(mousePosition))
-            {
-                hitTest = HitTest(foregroundObjects[iter - 1]);
-                if(hitTest != nullptr) return hitTest;
-            }
-        }
-        return foregroundObjects[0];
-    }
-    UIObject *Window::HitTest(UIObject *searchObject)
-    {
-        UIObject *nextObj = searchObject;
-        /*searchObject->ForEachImpl([&nextObj, this] (UIObject *object) -> void
-        {
-            if(object->ContainsPoint(mousePosition)
-                && object->visible)
-                nextObj = object;
-        });*/
-        if(searchObject == nextObj)
-        {
-            if(searchObject->enabled)
-                return searchObject;
-            else return nullptr;
-        }
-        else
-        {
-            nextObj = HitTest(nextObj);
-            if(nextObj == nullptr)
-            {
-                if(searchObject->enabled)
-                    return searchObject;
-                else return nullptr;
-            }
-            else return nextObj;
-        }
-    }
-
-	msize Window::GetHwnd()
+	void Window::HitTestEvent(
+		uint32 eventMask,
+		UIObject **object,
+		float32 *x,
+		float32 *y)
+	{
+		struct CallbackParams
+		{
+			UIObject *object;
+			Vector2f mousePosition;
+			Vector2f objectOrigin;
+			uint32 eventMask;
+			bool isHooked;
+		} params;
+		params.object = layout;
+		params.mousePosition = mousePosition;
+		params.objectOrigin = layout->GetEffectivePosition();
+		params.eventMask = eventMask;
+		params.isHooked = false;
+		static void(*callback)(UIObject *, CallbackParams *) = [](UIObject *object, CallbackParams *params) -> void
+		{
+			params->objectOrigin += object->GetEffectivePosition();
+			if (object->HitTest(params->mousePosition - params->objectOrigin)
+				&& object->visible
+				&& object->enabled
+				&& ((uint32)object->eventHandleMask & params->eventMask)
+				&& !params->isHooked)
+			{
+				params->object = object;
+				if ((uint32)object->eventHookMask & params->eventMask)
+					params->isHooked = true;
+			}
+			params->objectOrigin -= object->GetEffectivePosition();
+		};
+		UIObject *prevObject = params.object;
+		while (true)
+		{
+			params.object->ForEach(callback, &params);
+			if (prevObject == params.object || params.isHooked) break;
+			prevObject = params.object;
+			params.objectOrigin += params.object->GetEffectivePosition();
+		}
+		if (params.isHooked)
+			params.objectOrigin += params.object->GetEffectivePosition();
+		*object = params.object;
+		*x = mousePosition.x - params.objectOrigin.x;
+		*y = mousePosition.y - params.objectOrigin.y;
+	}
+	uint64 Window::GetHwnd()
 	{
 		return hwnd;
 	}
@@ -162,176 +94,182 @@ namespace ui
 	{
 		return height;
 	}
-	void Window::MouseClick(UIMouseEvent *e)
-	{
-
-	}
-	void Window::MouseRelease(UIMouseEvent *e)
-	{
-
-	}
-	void Window::StartHover(UIMouseEvent *e)
-	{
-
-	}
-	void Window::MouseMove(UIMouseEvent *e)
-	{
-		/*UIObject *receiver = HitTest();
-		if (hoveredObject != receiver)
-		{
-			hoveredObject->onEndHover.Notify(e);
-			hoveredObject = receiver;
-			hoveredObject->onStartHover.Notify(e);
-		}
-		if (draggedObject != nullptr)
-		{
-			draggedObject->onMouseMove.Notify(e);
-			return;
-		}
-		receiver->onMouseMove.Notify(e);
-		if (e->requireUpdate) Update();*/
-	}
-	void Window::EndHover(UIMouseEvent *e)
-	{
-
-	}
-	void Window::FocusReceive(UIMouseEvent *e)
-	{
-
-	}
-	void Window::FocusLoss(UIMouseEvent *e)
-	{
-
-	}
-	void Window::MouseWheelRotate(UIMouseWheelEvent *e)
-	{
-
-	}
-	void Window::KeyPress(UIKeyboardEvent *e)
-	{
-
-	}
-	void Window::KeyRelease(UIKeyboardEvent *e)
-	{
-
-	}
-	void Window::CharInput(UIKeyboardEvent *e)
-	{
-
-	}
-	void Window::OnResize(UIResizeEvent *e)
-	{
-
-	}
-    UIFactory *Window::GetFactory()
-    {
-        return uiFactory;
-    }
-    void Window::SetFocus(UIObject *object)
-    {
-        if(focusedObject == object) return;
-        UIMouseEvent focusEvent(nullptr, mousePosition.x, mousePosition.y);
-        if(focusedObject != nullptr)
-            focusedObject->onFocusLoss.Notify(&focusEvent);
-        focusedObject = object;
-        if(focusedObject != nullptr)
-            focusedObject->onFocusReceive.Notify(&focusEvent);
-        if(focusEvent.requireUpdate) Update();
-    }
-    UIObject *Window::GetFocus()
-    {
-        return focusedObject;
-    }
-    UIObject *Window::GetHover()
-    {
-        return hoveredObject;
-    }
-    void Window::SetDragging(UIObject *object)
-    {
-        draggedObject = object;
-    }
-    UIObject *Window::GetDragging()
-    {
-        return draggedObject;
-    }
-    void Window::PushForegroundObject(UIObject *object)
-    {
-        foregroundObjects.push_back(object);
-    }
-    void Window::RemoveForegroundObject(UIObject *object)
-    {
-        for(size_t iter = foregroundObjects.size(); iter != 0; iter--)
-        {
-            if(foregroundObjects[iter - 1] == object)
-            {
-                foregroundObjects.erase(foregroundObjects.begin() + iter - 1);
-                break;
-            }
-        }
-    }
-    /*void Window::OpenContext(OptionList *object)
-    {
-        if(context != nullptr)
-            CloseContext();
-        Lock();
-        context = object;
-        PushForegroundObject(context);
-        onMouseClick.AddCallback(closeContextCondition, 0);
-        Unlock();
-        Update();
-    }
-    void Window::CloseContext(OptionList *object)
-    {
-        Lock();
-        if(context == nullptr
-            || object != context)
-        {
-            Unlock();
-            return;
-        }
-        RemoveForegroundObject(context);
-        onMouseClick.RemoveCallback(closeContextCondition);
-        context->onClose.Notify(&UIEvent(nullptr));
-        context = nullptr;
-        Unlock();
-        Update();
-    }*/
-    void Window::CloseContext()
-    {
-        /*Lock();
-        if(context == nullptr)
-        {
-            Unlock();
-            return;
-        }
-        RemoveForegroundObject(context);
-        onMouseClick.RemoveCallback(closeContextCondition);
-        context->onClose.Notify(&UIEvent(nullptr));
-        context = nullptr;
-        Unlock();
-        Update();*/
-    }
-    UIObject *Window::GetContext()
-    {
-		return 0;
-        //return context;
-    }
 	Vector2f Window::GetMousePosition()
     {
         return mousePosition;
     }
+	void Window::GetLayout(UIObject **layout)
+	{
+		this->layout->AddRef();
+		*layout = this->layout;
+	}
     void Window::Update()
     {
-        Lock();
-
-        foregroundObjects[0]->width = foregroundObjects[0]->widthDesc.evaluate(width);
-        foregroundObjects[0]->height = foregroundObjects[0]->heightDesc.evaluate(height);
-        for(size_t iter = 0; iter < foregroundObjects.size(); iter++)
-        {
-            foregroundObjects[iter]->Prepare();
-            foregroundObjects[iter]->Render();
-        }
-
-        Unlock();
+		rt->Begin();
+		layout->Prepare(layout->GetWidthDesc().value, layout->GetHeightDesc().value);
+		layout->Render(rt, layout->GetEffectivePosition());
+		rt->End();
     }
+	void Window::Open()
+	{
+		OSOpenWindow(this);
+		Update();
+	}
+	void Window::OpenModal(Window *parent)
+	{
+		LeaveSharedSection();
+		OSEnableWindow(parent, false);
+		OSOpenWindow(this);
+		OSRunModalMsgLoop(this);
+		OSEnableWindow(parent, true);
+		OSOpenWindow(parent);
+		EnterSharedSection();
+	}
+	void Window::Resize(uint32 width, uint32 height)
+	{
+		OSResizeWindow(this, width, height);
+	}
+	void Window::Close()
+	{
+		OSCloseWindow(this);
+	}
+	void Window::MouseClick(UIMouseEvent *e)
+	{
+		UIManager::SetPull(nullptr);
+		onMouseClick.Notify(e);
+		UIObject *receiver;
+		HitTestEvent(
+			1 << e->button,
+			&receiver,
+			&e->x,
+			&e->y);
+		receiver->AddRef();
+		if (e->button == MouseButtonLeft || e->button == MouseButtonRight)
+			UIManager::SetFocus(receiver);
+		receiver->MouseClick(e);
+		receiver->onMouseClick.Notify(e);
+		receiver->Unref();
+	}
+	void Window::MouseRelease(UIMouseEvent *e)
+	{
+		onMouseRelease.Notify(e);
+		UIObject *receiver;
+		HitTestEvent(
+			1 << e->button,
+			&receiver,
+			&e->x,
+			&e->y);
+		receiver->AddRef();
+		receiver->MouseRelease(e);
+		receiver->onMouseRelease.Notify(e);
+		receiver->Unref();
+		UIManager::SetPull(nullptr);
+	}
+	void Window::MouseMove(UIMouseEvent *e)
+	{
+		onMouseMove.Notify(e);
+		mousePosition.x = e->x;
+		mousePosition.y = e->y;
+		UIObject *receiver;
+		HitTestEvent(
+			(uint32)(UIHookMouseHover),
+			&receiver,
+			&e->x,
+			&e->y);
+		receiver->AddRef();
+		UIObject *pulledObject;
+		UIManager::GetPull(&pulledObject);
+		if (pulledObject != nullptr)
+		{
+			if (pulledObject != receiver)
+			{
+				UIMouseEvent pullEvent = *e;
+				pullEvent.x = mousePosition.x - pulledObject->GetAbsolutePosition().x;
+				pullEvent.y = mousePosition.y - pulledObject->GetAbsolutePosition().y;
+				pulledObject->MouseMove(&pullEvent);
+				pulledObject->onMouseMove.Notify(&pullEvent);
+			}
+			pulledObject->Unref();
+		}
+		UIManager::SetHover(receiver);
+		receiver->MouseMove(e);
+		receiver->onMouseMove.Notify(e);
+		receiver->Unref();
+	}
+	void Window::MouseWheelRotate(UIMouseWheelEvent *e)
+	{
+		onMouseWheelRotate.Notify(e);
+		UIObject *receiver;
+		HitTestEvent(
+			(uint32)UIHookMouseWhellRotation,
+			&receiver,
+			&e->x,
+			&e->y);
+		receiver->AddRef();
+		receiver->MouseWheelRotate(e);
+		receiver->onMouseWheelRotate.Notify(e);
+		receiver->Unref();
+	}
+	void Window::KeyPress(UIKeyboardEvent *e)
+	{
+		onKeyPress.Notify(e);
+		if (!UIManager::IsFocused(nullptr))
+		{
+			UIObject *focusedObject;
+			UIManager::GetFocus(&focusedObject);
+			if (focusedObject->enabled
+				&& focusedObject->visible)
+			{
+				focusedObject->KeyPress(e);
+				focusedObject->onKeyPress.Notify(e);
+			}
+			focusedObject->Unref();
+		}
+	}
+	void Window::KeyRelease(UIKeyboardEvent *e)
+	{
+		onKeyRelease.Notify(e);
+		if (!UIManager::IsFocused(nullptr))
+		{
+			UIObject *focusedObject;
+			UIManager::GetFocus(&focusedObject);
+			if (focusedObject->enabled
+				&& focusedObject->visible)
+			{
+				focusedObject->KeyRelease(e);
+				focusedObject->onKeyRelease.Notify(e);
+			}
+			focusedObject->Unref();
+		}
+	}
+	void Window::CharInput(UIKeyboardEvent *e)
+	{
+		onCharInput.Notify(e);
+		if (!UIManager::IsFocused(nullptr))
+		{
+			UIObject *focusedObject;
+			UIManager::GetFocus(&focusedObject);
+			if (focusedObject->enabled
+				&& focusedObject->visible)
+			{
+				focusedObject->CharInput(e);
+				focusedObject->onCharInput.Notify(e);
+			}
+			focusedObject->Unref();
+		}
+	}
+	void Window::OnResize(UIResizeEvent *e)
+	{
+		this->width = e->newWidth;
+		this->height = e->newHeight;
+		rt->Resize(e->newWidth, e->newHeight);
+		layout->SetWidthDesc((float32)width);
+		layout->SetHeightDesc((float32)height);
+		onResize.Notify(e);
+	}
+	void Window::OnClose(UICloseEvent *e)
+	{
+		onClose.Notify(e);
+		if (e->confirmClose) Close();
+	}
 }

@@ -20,20 +20,38 @@ namespace atc
 		typename ...Args> struct FunctionBase
 	{
 		static constexpr bool IsFunction = true;
-		static constexpr uint32 FunctionResultSize = sizeof(ResultType);
-		static constexpr uint32 FunctionArgsCount = sizeof...(Args);
-		static constexpr uint32 FunctionArgsSize = ArgsSize<Args...>::Value;
+		static constexpr uint32 ResultSize = sizeof(ResultType);
+		static constexpr uint32 ArgsCount = sizeof...(Args);
+		static constexpr uint32 ArgsSize = ArgsSize<Args...>::Value;
 
-		void *Ptr;
+		void *fptr;
 	};
 	template <typename ...Args> struct FunctionBase<void, Args...>
 	{
 		static constexpr bool IsFunction = true;
-		static constexpr uint32 FunctionResultSize = 0;
-		static constexpr uint32 FunctionArgsCount = sizeof...(Args);
-		static constexpr uint32 FunctionArgsSize = ArgsSize<Args...>::Value;
+		static constexpr uint32 ResultSize = 0;
+		static constexpr uint32 ArgsCount = sizeof...(Args);
+		static constexpr uint32 ArgsSize = ArgsSize<Args...>::Value;
 
-		void *Ptr;
+		void *fptr;
+	};
+	template <typename ResultType> struct FunctionBase<ResultType>
+	{
+		static constexpr bool IsFunction = true;
+		static constexpr uint32 ResultSize = sizeof(ResultType);
+		static constexpr uint32 ArgsCount = 0;
+		static constexpr uint32 ArgsSize = 0;
+
+		void *fptr;
+	};
+	template <> struct FunctionBase<void>
+	{
+		static constexpr bool IsFunction = true;
+		static constexpr uint32 ResultSize = 0;
+		static constexpr uint32 ArgsCount = 0;
+		static constexpr uint32 ArgsSize = 0;
+
+		void *fptr;
 	};
 
 	enum CallConvention
@@ -54,10 +72,10 @@ namespace atc
 		typename ...Args> struct FunctionInvoker<ResultType __cdecl (Args...)>
 		: FunctionBase<ResultType, Args...>
 	{
-		static constexpr CallConvention FunctionCallConvention = CallConventionCdecl;
+		static constexpr uint32 CallConvention = CallConventionCdecl;
 		ResultType inline operator () (Args... args)
 		{
-			return ((ResultType (__cdecl *)(Args...))Ptr)(args...);
+			return ((ResultType (__cdecl *)(Args...))fptr)(args...);
 		}
 	};
 	template <
@@ -65,10 +83,10 @@ namespace atc
 		typename ...Args> struct FunctionInvoker<ResultType __stdcall (Args...)>
 		: FunctionBase<ResultType, Args...>
 	{
-		static constexpr CallConvention FunctionCallConvention = CallConventionStdcall;
+		static constexpr uint32 CallConvention = CallConventionStdcall;
 		ResultType inline operator () (Args... args)
 		{
-			return ((ResultType (__stdcall *)(Args...))Ptr)(args...);
+			return ((ResultType (__stdcall *)(Args...))fptr)(args...);
 		}
 	};
 	template <
@@ -76,10 +94,10 @@ namespace atc
 		typename ...Args> struct FunctionInvoker<ResultType __fastcall (Args...)>
 		: FunctionBase<ResultType, Args...>
 	{
-		static constexpr CallConvention FunctionCallConvention = CallConventionFastcall;
+		static constexpr uint32 CallConvention = CallConventionFastcall;
 		ResultType inline operator () (Args... args)
 		{
-			return ((ResultType(__fastcall *)(Args...))Ptr)(args...);
+			return ((ResultType(__fastcall *)(Args...))fptr)(args...);
 		}
 	};
 	template <
@@ -87,10 +105,10 @@ namespace atc
 		typename ...Args> struct FunctionInvoker<ResultType __vectorcall (Args...)>
 		: FunctionBase<ResultType, Args...>
 	{
-		static constexpr CallConvention FunctionCallConvention = CallConventionVectorcall;
+		static constexpr uint32 CallConvention = CallConventionVectorcall;
 		ResultType inline operator () (Args... args)
 		{
-			return ((ResultType (__vectorcall *)(Args...))Ptr)(args...);
+			return ((ResultType (__vectorcall *)(Args...))fptr)(args...);
 		}
 	};
 
@@ -102,20 +120,28 @@ namespace atc
 			typedef Function<Type> AssignableFunction;
 			static_assert(
 				AssignableFunction::IsFunction
-				&& FunctionResultSize == AssignableFunction::FunctionResultSize
-				&& FunctionArgsSize == AssignableFunction::FunctionArgsSize
-				&& FunctionCallConvention == AssignableFunction::FunctionCallConvention,
+				&& ResultSize == AssignableFunction::ResultSize
+				&& ArgsSize == AssignableFunction::ArgsSize
+				&& CallConvention == AssignableFunction::CallConvention,
 				"Function is not compatible");
-			Ptr = (void *)function;
+			fptr = (void *)function;
 		}
 		template <> void Assign<FunctionType>(FunctionType *function)
 		{
-			Ptr = (void *)function;
+			fptr = (void *)function;
 		}
 		Function() {}
+		Function(Function<FunctionType> &object)
+		{
+			fptr = object.fptr;
+		}
 		template <typename Type> Function(Type *function)
 		{
 			Assign<Type>(function);
+		}
+		void operator=(Function<FunctionType> object)
+		{
+			fptr = object.fptr;
 		}
 		template <typename Type> void operator=(Type *function)
 		{

@@ -3,8 +3,6 @@
 
 #include "gpu\CommandBuffer.h"
 #include "gpu\GpuDevice.h"
-#include "gpu\CommandPool.h"
-#include "gpu\DescriptorSet.h"
 #include "gpu\SwapChain.h"
 #include "gpu\Pipeline.h"
 #include "gpu\Buffer.h"
@@ -12,11 +10,11 @@
 namespace gpu
 {
 	CommandBuffer::CommandBuffer(
-		CommandPool *cmdPool,
+		GpuDevice *device,
 		VkCommandBuffer vkCmdBuffer)
 	{
-		cmdPool->AddRef();
-		this->cmdPool = cmdPool;
+		device->AddRef();
+		this->device = device;
 		this->vkCmdBuffer = vkCmdBuffer;
 
 		currentPipeline = nullptr;
@@ -30,11 +28,11 @@ namespace gpu
 	CommandBuffer::~CommandBuffer()
 	{
 		vkFreeCommandBuffers(
-			cmdPool->device->vkDevice,
-			cmdPool->vkCmdPool,
+			device->vkDevice,
+			device->vkCmdPool,
 			1,
 			&vkCmdBuffer);
-		cmdPool->Release();
+		device->Unref();
 	}
 	void CommandBuffer::Begin()
 	{
@@ -70,6 +68,7 @@ namespace gpu
 			VK_SUBPASS_CONTENTS_INLINE);
 
 		VkRect2D scissor = renderPassBegin.renderArea;
+		scissors.clear();
 		scissors.push_back(scissor);
 		vkCmdSetScissor(vkCmdBuffer, 0, 1, &scissor);
 	}
@@ -79,24 +78,21 @@ namespace gpu
 	}
 	void CommandBuffer::BindPipeline(Pipeline *pipeline)
 	{
-		if (currentPipeline == pipeline) return;
 		currentPipeline = pipeline;
 		vkCmdBindPipeline(
 			vkCmdBuffer,
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
 			pipeline->vkPipeline);
 	}
-	void CommandBuffer::BindDescriptorSets(
-		Pipeline *pipeline,
-		DescriptorSet *descSet)
+	void CommandBuffer::BindDescriptorSet(VkDescriptorSet vkDescSet)
 	{
 		vkCmdBindDescriptorSets(
 			vkCmdBuffer,
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			pipeline->vkPipelineLayout,
+			currentPipeline->vkPipelineLayout,
 			0,
 			1,
-			&descSet->vkDescSet,
+			&vkDescSet,
 			0,
 			nullptr);
 	}
@@ -117,28 +113,26 @@ namespace gpu
 		vkCmdSetViewport(vkCmdBuffer, 0, 1, &vkViewport);
 	}
 	void CommandBuffer::PushScissor(
-		int32 x,
-		int32 y,
-		uint32 width,
-		uint32 height)
+		float32 x,
+		float32 y,
+		float32 width,
+		float32 height)
 	{
 		VkRect2D scissor;
-		scissor.offset.x = Max(x, scissors.back().offset.x);
-		scissor.offset.y = Max(y, scissors.back().offset.y);
-		scissor.extent.width = Min(x + width,
-			scissors.back().offset.x + scissors.back().extent.width) - scissor.offset.x;
-		scissor.extent.height = Min(y + height,
-			scissors.back().offset.y + scissors.back().extent.height) - scissor.offset.y;
+		scissor.offset.x = Max((int32)floor(x), scissors.back().offset.x);
+		scissor.offset.y = Max((int32)floor(y), scissors.back().offset.y);
+		scissor.extent.width = (uint32)Max(
+			0, Min((int32)ceil(x + width), scissors.back().offset.x + (int32)scissors.back().extent.width) - scissor.offset.x);
+		scissor.extent.height = (uint32)Max(
+			0, Min((int32)ceil(y + height), scissors.back().offset.y + (int32)scissors.back().extent.height) - scissor.offset.y);
 		scissors.push_back(scissor);
 		vkCmdSetScissor(vkCmdBuffer, 0, 1, &scissor);
 	}
 	void CommandBuffer::PopScissor()
 	{
-		if (scissors.size() != 1)
-		{
-			scissors.pop_back();
-			vkCmdSetScissor(vkCmdBuffer, 0, 1, &scissors.back());
-		}
+		if (scissors.size() == 1) return;
+		scissors.pop_back();
+		vkCmdSetScissor(vkCmdBuffer, 0, 1, &scissors.back());
 	}
 	void CommandBuffer::PushConstants(
 		void *data,
@@ -154,18 +148,6 @@ namespace gpu
 			size,
 			(uint8 *)data + offset);
 	}
-	void CommandBuffer::UpdateWorldTransform(
-		Pipeline *pipeline,
-		Matrix4x4f *transform)
-	{
-		vkCmdPushConstants(
-			vkCmdBuffer,
-			pipeline->vkPipelineLayout,
-			VK_SHADER_STAGE_VERTEX_BIT,
-			64,
-			64,
-			transform);
-	}
 	void CommandBuffer::BindVertexBuffer(
 		uint32 bindingIndex,
 		Buffer *buffer)
@@ -176,24 +158,6 @@ namespace gpu
 			1,
 			&buffer->vkBuffer,
 			(VkDeviceSize *)&zeroOffset);
-	}
-	void CommandBuffer::CopyBuffer(
-		Buffer *srcBuffer,
-		Buffer *dstBuffer,
-		msize srcOffset,
-		msize dstOffset,
-		msize size)
-	{
-		VkBufferCopy region;
-		region.srcOffset = srcOffset;
-		region.dstOffset = dstOffset;
-		region.size = size;
-		vkCmdCopyBuffer(
-			vkCmdBuffer,
-			srcBuffer->vkBuffer,
-			dstBuffer->vkBuffer,
-			1,
-			&region);
 	}
 	void CommandBuffer::Draw(
 		uint32 vertexCount,
@@ -228,26 +192,5 @@ namespace gpu
 			&submitInfo,
 			VK_NULL_HANDLE);
 		vkQueueWaitIdle(swapChain->vkGraphicsQueue);
-	}
-	void CommandBuffer::SubmitCopy(SwapChain *swapChain)
-	{
-		VkPipelineStageFlags pipelineStageFlags = VK_PIPELINE_STAGE_TRANSFER_BIT;
-		VkSubmitInfo submitInfo;
-		submitInfo.pNext = nullptr;
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submitInfo.pWaitDstStageMask = &pipelineStageFlags;
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &vkCmdBuffer;
-		submitInfo.waitSemaphoreCount = 0;
-		submitInfo.pWaitSemaphores = nullptr;
-		submitInfo.signalSemaphoreCount = 0;
-		submitInfo.pSignalSemaphores = nullptr;
-		vkQueueSubmit(
-			swapChain->vkGraphicsQueue,
-			1,
-			&submitInfo,
-			VK_NULL_HANDLE);
-		if (cmdPool->device->vkGraphicsQueue != swapChain->vkGraphicsQueue)
-			vkDeviceWaitIdle(cmdPool->device->vkDevice);
 	}
 }

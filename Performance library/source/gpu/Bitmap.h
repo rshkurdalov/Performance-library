@@ -3,11 +3,12 @@
 
 #pragma once
 #include "kernel\kernel.h"
+#include "kernel\SharedObject.h"
 #include "math\VectorMath.h"
 
 namespace gpu
 {
-	class Bitmap
+	class Bitmap : public SharedObject
 	{
 		friend class GpuDevice;
 		friend class RenderTarget;
@@ -16,7 +17,7 @@ namespace gpu
 		uint32 width;
 		uint32 height;
 		Matrix3x2f transform;
-		msize memOffset;
+		uint32 memOffset;
 		Bitmap(
 			GpuDevice *device,
 			uint32 width,

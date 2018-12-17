@@ -18,18 +18,6 @@ typedef wchar_t wchar;
 typedef float float32;
 typedef double float64;
 
-template <uint32 bytes> struct MachineSizeType
-{
-	using Type = uint32;
-};
-template <> struct MachineSizeType<sizeof(uint64)>
-{
-	using Type = uint64;
-};
-using msize = MachineSizeType<sizeof(void *)>::Type;
-
-#define aligned(type) alignas(alignof(type)) type
-
 namespace atc
 {
 	template <

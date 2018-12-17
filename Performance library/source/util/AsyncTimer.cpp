@@ -5,60 +5,46 @@
 
 namespace util
 {
-    AsyncTimer::AsyncTimer()
-    {
-        state = TimerStateInactive;
-    }
-    AsyncTimer::~AsyncTimer()
-    {
-
-    }
-    void AsyncTimer::Start()
-    {
-        Lock();
-        if(state == TimerStateActive)
-        {
-            Unlock();
-            return;
-        }
-        timeExcess = 0;
-        state = TimerStateActive;
-        lastTimestamp = std::chrono::high_resolution_clock::now().time_since_epoch().count();
-        Unlock();
-    }
-    void AsyncTimer::Refresh()
-    {
-        Stop();
-        Start();
-    }
-    void AsyncTimer::Stop()
-    {
-        Lock();
-        if(state == TimerStateInactive)
-        {
-            Unlock();
-            return;
-        }
-        state = TimerStateInactive;
-        Unlock();
-    }
-    uint64 AsyncTimer::GetTicks()
-    {
-        Lock();
-        if(state == TimerStateInactive)
-        {
-            Unlock();
-            return 0;
-        }
-        int64 now = std::chrono::high_resolution_clock::now().time_since_epoch().count();
-        uint64 ticks = (now - lastTimestamp + timeExcess) / period;
-        timeExcess = (now - lastTimestamp + timeExcess) % period;
-        lastTimestamp = now;
-        Unlock();
-        return ticks;
-    }
-    TimerState AsyncTimer::GetTimerState()
-    {
-        return state;
-    }
+	AsyncTimer::AsyncTimer()
+	{
+		state = TimerStateInactive;
+	}
+	void AsyncTimer::Start()
+	{
+		if (state == TimerStateActive) return;
+		startTimestamp = Time::Now();
+		completePeriods = 0;
+		state = TimerStateActive;
+	}
+	void AsyncTimer::Refresh()
+	{
+		Stop();
+		Start();
+	}
+	void AsyncTimer::Stop()
+	{
+		state = TimerStateInactive;
+	}
+	int64 AsyncTimer::GetPeriod()
+	{
+		return period;
+	}
+	uint64 AsyncTimer::GetTicks()
+	{
+		uint64 ticks = ((Time::Now() - startTimestamp) / period) - completePeriods;
+		completePeriods += ticks;
+		return ticks;
+	}
+	uint64 AsyncTimer::GetCompletePeriods()
+	{
+		return (Time::Now() - startTimestamp) / period;
+	}
+	int64 AsyncTimer::GetPeriodProgress()
+	{
+		return (Time::Now() - startTimestamp) % period;
+	}
+	TimerState AsyncTimer::GetState()
+	{
+		return state;
+	}
 }

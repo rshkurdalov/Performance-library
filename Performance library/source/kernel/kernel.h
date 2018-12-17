@@ -17,24 +17,52 @@ namespace ui {}
 
 namespace kernel
 {
+	using namespace atc;
+	using namespace math;
+	using namespace algo;
+	using namespace util;
+	using namespace gpu;
+	using namespace graphics;
+	using namespace ui;
+
 	typedef class SharedObject SharedObject;
 
-	HResult EngineInitialize();
+	HResult LibraryInitialize();
+	void EnterSharedSection();
+	void LeaveSharedSection();
 }
 
 namespace atc
 {
 	using namespace kernel;
+	using namespace math;
+	using namespace algo;
+	using namespace util;
+	using namespace gpu;
+	using namespace graphics;
+	using namespace ui;
 }
 
 namespace math
 {
+	using namespace kernel;
 	using namespace atc;
+	using namespace algo;
+	using namespace util;
+	using namespace gpu;
+	using namespace graphics;
+	using namespace ui;
 }
 
 namespace algo
 {
+	using namespace kernel;
+	using namespace atc;
 	using namespace math;
+	using namespace util;
+	using namespace gpu;
+	using namespace graphics;
+	using namespace ui;
 
 	typedef class DistanceGeometry DistanceGeometry;
 }
@@ -43,6 +71,11 @@ namespace util
 {
 	using namespace kernel;
 	using namespace atc;
+	using namespace math;
+	using namespace algo;
+	using namespace gpu;
+	using namespace graphics;
+	using namespace ui;
 
 	typedef class Time Time;
 	typedef class AsyncTimer AsyncTimer;
@@ -52,7 +85,12 @@ namespace util
 namespace gpu
 {
 	using namespace kernel;
+	using namespace atc;
+	using namespace math;
+	using namespace algo;
+	using namespace util;
 	using namespace graphics;
+	using namespace ui;
 
 	typedef class GpuDevice GpuDevice;
 	typedef class GpuMemoryManager GpuMemoryManager;
@@ -73,24 +111,42 @@ namespace gpu
 namespace graphics
 {
 	using namespace kernel;
+	using namespace atc;
+	using namespace math;
 	using namespace algo;
-	using namespace gpu;
 	using namespace util;
+	using namespace gpu;
+	using namespace ui;
 
 	typedef class Color Color;
 	typedef class GeometryPath GeometryPath;
 	typedef class Geometry Geometry;
-	typedef class Font Font;
+	typedef struct FontMetadata FontMetadata;
+	typedef struct CharMetadata CharMetadata;
+	typedef class FontManager FontManager;
 }
 
 namespace ui
 {
 	using namespace kernel;
-	using namespace gpu;
+	using namespace atc;
+	using namespace math;
+	using namespace algo;
 	using namespace util;
+	using namespace gpu;
+	using namespace graphics;
 
+	typedef class UIManager UIManager;
 	typedef class Window Window;
 	typedef class UIFactory UIFactory;
 	typedef class UIObject UIObject;
+	typedef class ScrollBar ScrollBar;
+	typedef class FlowLayout FlowLayout;
+	typedef class TextField TextField;
+	typedef class PushButton PushButton;
+	typedef class LayoutButton LayoutButton;
+	typedef class CheckBox CheckBox;
+	typedef class RadioButtonGroup RadioButtonGroup;
+	typedef class RadioButton RadioButton;
 }
 

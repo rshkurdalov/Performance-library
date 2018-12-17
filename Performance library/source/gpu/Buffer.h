@@ -4,7 +4,7 @@
 #pragma once
 #include "kernel\kernel.h"
 #include "kernel\SharedObject.h"
-#include "gpu\VulkanAPI.h"
+#include "gpu\GpuDevice.h"
 
 namespace gpu
 {
@@ -32,11 +32,11 @@ namespace gpu
 			VkDeviceSize bufferSize);
 		~Buffer();
 	public:
-		msize GetSize();
-		HResult Resize(msize newSize);
+		uint32 GetSize();
+		HResult Resize(uint32 newSize);
 		HResult MapMemory(
-			msize offset,
-			msize size,
+			uint32 offset,
+			uint32 size,
 			void **ppData);
 		void UnmapMemory();
 	};

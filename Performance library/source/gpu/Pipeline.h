@@ -4,7 +4,7 @@
 #pragma once
 #include "kernel\kernel.h"
 #include "kernel\SharedObject.h"
-#include "gpu\VulkanAPI.h"
+#include "gpu\GpuDevice.h"
 
 namespace gpu
 {
@@ -12,7 +12,6 @@ namespace gpu
 	{
 		friend class GpuDevice;
 		friend class CommandBuffer;
-		friend class DescriptorPool;
 		friend class SwapChain;
 	protected:
 		GpuDevice *device;

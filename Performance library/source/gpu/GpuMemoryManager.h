@@ -11,14 +11,14 @@ namespace gpu
 	{
 		friend class GpuDevice;
 	protected:
-		static const msize InitialHeapSize = 2 << 15;
+		static constexpr uint32 InitialHeapSize = 2 << 15;
 		struct Node
 		{
-			msize allocated;
-			msize maxAlloc;
+			uint32 allocated;
+			uint32 maxAlloc;
 			Node *left;
 			Node *right;
-			Node(msize size)
+			Node(uint32 size)
 			{
 				this->allocated = 0;
 				this->maxAlloc = size;
@@ -35,21 +35,21 @@ namespace gpu
 			}
 		};
 		Node *root;
-		msize heapSize;
-		msize offset;
-		msize range;
-		msize rangeDiv2;
+		uint32 heapSize;
+		uint32 offset;
+		uint32 range;
+		uint32 rangeDiv2;
+		GpuDevice *device;
 		Buffer *storageBuffer;
-		DescriptorSet *descSet;
 
 		GpuMemoryManager(
-			Buffer *storageBuffer,
-			DescriptorSet *descSet);
+			GpuDevice *device,
+			Buffer *storageBuffer);
 		~GpuMemoryManager();
-		void AllocBlock(Node *node, msize size);
-		void DeallocBlock(Node *node, msize offset, msize range, msize addr);
+		void AllocBlock(Node *node, uint32 size);
+		void DeallocBlock(Node *node, uint32 offset, uint32 range, uint32 addr);
 	public:
-		msize Allocate(msize size);
-		void Deallocate(msize addr);
+		uint32 Allocate(uint32 size);
+		void Deallocate(uint32 addr);
 	};
 }

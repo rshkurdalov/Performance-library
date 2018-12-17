@@ -1,132 +1,84 @@
 // Copyright (c) 2017-2018, Roman Shkurdalov
 // This file is under The Clear BSD License, see LICENSE.txt
 
-#pragma comment(lib, "dependencies/freetype/freetype.lib")
-
-#include "graphics\Font.h"
-#include "GeometryPath.h"
-#include "freetype\ft2build.h"
-#include FT_FREETYPE_H
-#include FT_GLYPH_H
-#include <fstream>
-#include <vector>
+#include "Font.h"
+#include "kernel\OperatingSystemAPI.h"
+#include <tuple>
+#include <map>
 
 namespace graphics
 {
-	FT_Library ftLibrary;
+	std::map<std::tuple<std::wstring, uint32, bool, uint32>, FontMetadata *> fontTable;
+	std::map<std::tuple<char32, FontMetadata *>, CharMetadata *> charTable;
+	float32 dpiMultiplier;
 
-	HResult FtInitialize()
+	HResult FontInitialize()
 	{
-		CheckReturnFail(FT_Init_FreeType(&ftLibrary));
+		dpiMultiplier = (float32)OSGetDPI() / 72.0f;
 		return HResultSuccess;
 	}
 
-	HResult LoadFont(
-		std::wstring path,
-		Font **ppFont)
+	float32 FontManager::GetDPIMultiplier()
 	{
-		std::fstream file(path.c_str(), std::ios::in | std::ios::binary);
-		if (!file.is_open()) return HResultInvalidArg;
-		std::vector<int8> data;
-		file.seekg(0, std::ios::end);
-		data.resize(file.tellg());
-		file.seekg(0, std::ios::beg);
-		file.read(data.data(), data.size());
-		file.close();
-
-		FT_Face ftFace;
-		CheckReturnFail(FT_New_Memory_Face(
-			ftLibrary,
-			(FT_Byte *)data.data(),
-			(FT_Long)data.size(),
-			0,
-			&ftFace));
-		FT_Set_Char_Size(ftFace, ftFace->units_per_EM, ftFace->units_per_EM, 0, 0);
-		float32 sm = 1.0f / ftFace->units_per_EM;
-		std::map<wchar, CharMetadata> charData;
-		GeometryPath *g;
-		Vector2f v2, v3, v4, vt;
-		uint32 idx, code, p, pf, pl, pNext, pNext2;
-		code = FT_Get_First_Char(ftFace, &idx);
-		while (idx != 0)
+		return dpiMultiplier;
+	}
+	HResult FontManager::GetFontMetadata(
+		std::wstring &fontName,
+		float32 size,
+		bool isItalic,
+		uint32 weight,
+		FontMetadata **fontMetadata)
+	{
+		size = round(size);
+		weight = Max(400, weight);
+		weight = Min(1000, weight);
+		decltype(fontTable)::key_type key(fontName, (uint32)size, isItalic, weight);
+		decltype(fontTable)::iterator iter = fontTable.find(key);
+		if (iter == fontTable.end())
 		{
-			if (code == L'n')
+			FontMetadata *font = new FontMetadata();
+			if (OSLoadFont((wchar *)fontName.c_str(), (uint32)size, isItalic, weight, font) == HResultSuccess)
 			{
-				idx = idx;
+				fontTable[key] = font;
+				*fontMetadata = font;
+				return HResultSuccess;
 			}
-			FT_Load_Glyph(ftFace, idx, FT_LOAD_NO_BITMAP | FT_LOAD_IGNORE_TRANSFORM);
-			g = new GeometryPath();
-			p = 0;
-			pf = 0;
-			for (uint32 ct = 0; ct < ftFace->glyph->outline.n_contours; ct++)
-			{
-				pl = ftFace->glyph->outline.contours[ct];
-				while (p <= pl)
-				{
-					vt = Vector2f(
-						ftFace->glyph->outline.points[p].x*sm,
-						-ftFace->glyph->outline.points[p].y*sm);
-					if (ftFace->glyph->outline.tags[p] & FT_CURVE_TAG_ON)
-					{
-						if (p == pf) g->Move(vt);
-						else g->AddLine(vt);
-						p++;
-					}
-					else
-					{
-						pNext = (p == pl ? pf : p + 1);
-						v2 = Vector2f(
-							ftFace->glyph->outline.points[pNext].x*sm,
-							-ftFace->glyph->outline.points[pNext].y*sm);
-						pNext2 = (pNext == pl ? pf : pNext + 1);
-						v3 = Vector2f(
-							ftFace->glyph->outline.points[pNext2].x*sm,
-							-ftFace->glyph->outline.points[pNext2].y*sm);
-						if (ftFace->glyph->outline.tags[p] & FT_CURVE_TAG_CUBIC)
-						{
-							g->AddCubicBezier(vt, v2, v3);
-							p += 3;
-						}
-						else
-						{
-							if ((ftFace->glyph->outline.tags[pNext] & 3) == FT_CURVE_TAG_CONIC)
-							{
-								v4 = (vt + v2)*0.5f;
-								g->AddQuadraticBezier(vt, v4);
-								g->AddQuadraticBezier(v2, v3);
-								p += 3;
-							} 
-							else
-							{
-								g->AddQuadraticBezier(vt, v2);
-								p += 2;
-							}
-						}
-					}
-				}
-				p = pl + 1;
-				pf = pl + 1;
-			}
-			CharMetadata charMetadata;
-			charMetadata.code = code;
-			charMetadata.advance.x = ftFace->glyph->advance.x*sm;
-			charMetadata.advance.y = ftFace->glyph->advance.y*sm;
-			charMetadata.outline = g;
-			charData[code] = charMetadata;
-			code = FT_Get_Next_Char(ftFace, code, &idx);
-			if (charData.size() >= 200) break;
+			else return HResultFail;
 		}
-
-		*ppFont = new Font(charData);
-
+		*fontMetadata = iter->second;
 		return HResultSuccess;
 	}
-	Font::Font(std::map<wchar, CharMetadata> &charData)
+	HResult FontManager::GetCharMetadata(
+		char32 code,
+		FontMetadata *font,
+		CharMetadata **charMetadata)
 	{
-		this->charData = charData;
+		decltype(charTable)::key_type key(code, font);
+		decltype(charTable)::iterator iter = charTable.find(key);
+		if (iter == charTable.end())
+		{
+			CharMetadata *fontCharMetadata = new CharMetadata();
+			if (OSLoadGlyphMetadata(code, font, fontCharMetadata) == HResultSuccess)
+			{
+				charTable[key] = fontCharMetadata;
+				*charMetadata = fontCharMetadata;
+				return HResultSuccess;
+			}
+			else return HResultFail;
+		}
+		*charMetadata = iter->second;
+		return HResultSuccess;
 	}
-	Font::~Font()
+	uint32 FontManager::AdjustFontWeight(uint32 value)
 	{
-
+		if (value <= 400) value = 400;
+		else if (value >= 1000) value = 1000;
+		else
+		{
+			uint32 remainder = value % 100;
+			if (remainder <= 50) value -= remainder;
+			else value += (100 - remainder);
+		}
+		return value;
 	}
 }

@@ -2,15 +2,30 @@
 // This file is under The Clear BSD License, see LICENSE.txt
 
 #include "kernel\kernel.h"
-#include "gpu\VulkanAPI.h"
+#include "gpu\GpuManager.h"
 #include "graphics\Font.h"
+#include "ui\UIManager.h"
+#include "util\CallbackTimer.h"
+#include <concrt.h>
 
 namespace kernel
 {
-	HResult EngineInitialize()
+	concurrency::critical_section globalSharedSection;
+
+	HResult LibraryInitialize()
 	{
-		CheckReturn(gpu::VkInitialize());
-		CheckReturn(graphics::FtInitialize());
+		CheckReturn(GpuInitialize());
+		CheckReturn(FontInitialize());
+		CheckReturn(UIInitialize());
+		CheckReturn(TimerProcessInitialize());
 		return HResultSuccess;
+	}
+	void EnterSharedSection()
+	{
+		globalSharedSection.lock();
+	}
+	void LeaveSharedSection()
+	{
+		globalSharedSection.unlock();
 	}
 }

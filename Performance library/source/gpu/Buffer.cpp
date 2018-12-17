@@ -26,13 +26,13 @@ namespace gpu
 	{
 		vkFreeMemory(device->vkDevice, vkBufferMemory, nullptr);
 		vkDestroyBuffer(device->vkDevice, vkBuffer, nullptr);
-		device->Release();
+		device->Unref();
 	}
-	msize Buffer::GetSize()
+	uint32 Buffer::GetSize()
 	{
-		return (msize)bufferSize;
+		return (uint32)bufferSize;
 	}
-	HResult Buffer::Resize(msize newSize)
+	HResult Buffer::Resize(uint32 newSize)
 	{
 		vkFreeMemory(device->vkDevice, vkBufferMemory, nullptr);
 		vkDestroyBuffer(device->vkDevice, vkBuffer, nullptr);
@@ -49,11 +49,12 @@ namespace gpu
 		VkMemoryAllocateInfo allocInfo;
 		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		allocInfo.pNext = nullptr;
-		CheckReturn(VkGetMemoryTypeFromRequirements(
+		if (!device->GetMemoryTypeFromRequirements(
 			device->vkPhysicalDevice,
 			vkMemReqs.memoryTypeBits,
 			vkMemoryTypeBits,
-			&allocInfo.memoryTypeIndex));
+			&allocInfo.memoryTypeIndex))
+			return HResultFail;
 		allocInfo.allocationSize = vkMemReqs.size;
 		bufferSize = vkMemReqs.size;
 		CheckReturnFail(vkAllocateMemory(
@@ -70,8 +71,8 @@ namespace gpu
 		return HResultSuccess;
 	}
 	HResult Buffer::MapMemory(
-		msize offset,
-		msize size,
+		uint32 offset,
+		uint32 size,
 		void **ppData)
 	{
 		CheckReturnFail(vkMapMemory(

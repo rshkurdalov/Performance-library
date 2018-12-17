@@ -474,10 +474,10 @@ namespace math
 		Vector<coordinates, ValTy> &triPoint3)
 	{
 		static_assert(coordinates >= 2, "Invalid vector size");
-		return Greater(
+		return GreaterEqual(
 			(triPoint2[0] - triPoint1[0])*(triPoint3[1] - triPoint1[1])
 			- (triPoint3[0] - triPoint1[0])*(triPoint2[1] - triPoint1[1]),
-			static_cast<ValTy>(-mEps));
+			static_cast<ValTy>(0));
 	}
 	template <uint32 coordinates, typename ValTy>
 	inline bool VectorCCWTestRH(
@@ -486,10 +486,10 @@ namespace math
 		Vector<coordinates, ValTy> &triPoint3)
 	{
 		static_assert(coordinates >= 2, "Invalid vector size");
-		return Less(
+		return LessEqual(
 			(triPoint2[0] - triPoint1[0])*(triPoint3[1] - triPoint1[1])
 			- (triPoint3[0] - triPoint1[0])*(triPoint2[1] - triPoint1[1]),
-			static_cast<ValTy>(mEps));
+			static_cast<ValTy>(0));
 	}
 	template <
 		uint32 coordinates,
@@ -1142,7 +1142,7 @@ namespace math
 			ValTy *pDet = nullptr)
 	{
 		static_assert(rows == columns, "Invalid matrix size");
-		static constexpr uint32 n = rows;
+		constexpr uint32 n = rows;
 		ValTy det = MatrixDet(m);
 		if (pDet != nullptr) *pDet = det;
 		if (det != static_cast<ValTy>(0))
@@ -1199,32 +1199,6 @@ namespace math
 			right(right),
 			bottom(bottom) {}
 	};
-
-	template<typename ValTy> inline ValTy RectWidth(Rect<ValTy> &r)
-	{
-		return r.right - r.left;
-	}
-	template<typename ValTy> inline ValTy RectHeight(Rect<ValTy> &r)
-	{
-		return r.bottom - r.top;
-	}
-	template<typename ValTy> inline ValTy RectDiagonal(Rect<ValTy> &r)
-	{
-		return VectorLength(Vector<2, ValTy>(RectWidth(r), RectHeight(r)));
-	}
-	template<
-		typename ValTy,
-		typename PointValTy> inline ValTy RectContainsPoint(
-			Rect<ValTy> &r,
-			Vector<2, PointValTy> p)
-	{
-		return p[0] >= r.left && r.right >= p[0]
-			&& p[1] >= r.top && r.bottom >= p[1];
-	}
-
-	typedef Rect<float32> Rectf;
-	typedef Rect<uint32> Rectu;
-	typedef Rect<int32> Recti;
 
 	template <typename ValTy> inline ValTy ToRadians(ValTy degrees)
 	{

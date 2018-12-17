@@ -8,7 +8,7 @@ namespace gpu
 {
 	GradientCollection::GradientCollection(
 		GpuDevice *device,
-		msize memOffset,
+		uint32 memOffset,
 		uint32 count)
 	{
 		device->AddRef();
@@ -19,6 +19,6 @@ namespace gpu
 	GradientCollection::~GradientCollection()
 	{
 		device->DeallocateMemory(memOffset);
-		device->Release();
+		device->Unref();
 	}
 }

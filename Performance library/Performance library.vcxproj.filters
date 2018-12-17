@@ -60,15 +60,6 @@
     <ClInclude Include="source\gpu\CommandBuffer.h">
       <Filter>Source Files\gpu</Filter>
     </ClInclude>
-    <ClInclude Include="source\gpu\CommandPool.h">
-      <Filter>Source Files\gpu</Filter>
-    </ClInclude>
-    <ClInclude Include="source\gpu\DescriptorPool.h">
-      <Filter>Source Files\gpu</Filter>
-    </ClInclude>
-    <ClInclude Include="source\gpu\DescriptorSet.h">
-      <Filter>Source Files\gpu</Filter>
-    </ClInclude>
     <ClInclude Include="source\gpu\GpuDevice.h">
       <Filter>Source Files\gpu</Filter>
     </ClInclude>
@@ -91,9 +82,6 @@
       <Filter>Source Files\gpu</Filter>
     </ClInclude>
     <ClInclude Include="source\gpu\SwapChain.h">
-      <Filter>Source Files\gpu</Filter>
-    </ClInclude>
-    <ClInclude Include="source\gpu\VulkanAPI.h">
       <Filter>Source Files\gpu</Filter>
     </ClInclude>
     <ClInclude Include="source\graphics\Color.h">
@@ -156,11 +144,44 @@
     <ClInclude Include="source\Application.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="source\Scene.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="source\graphics\Geometry.h">
       <Filter>Source Files\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="source\ui\UIFactory.h">
+      <Filter>Source Files\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="source\ui\UIManager.h">
+      <Filter>Source Files\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="source\ui\TextField.h">
+      <Filter>Source Files\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="source\gpu\GpuManager.h">
+      <Filter>Source Files\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="source\ui\FlowLayout.h">
+      <Filter>Source Files\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="source\ui\PushButton.h">
+      <Filter>Source Files\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="source\ui\CheckBox.h">
+      <Filter>Source Files\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="source\ui\LayoutButton.h">
+      <Filter>Source Files\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="source\ui\RadioButton.h">
+      <Filter>Source Files\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="source\ui\OptionList.h">
+      <Filter>Source Files\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="source\ui\ImageView.h">
+      <Filter>Source Files\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="source\gpu\ShaderData.h">
+      <Filter>Source Files\gpu</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -174,15 +195,6 @@
       <Filter>Source Files\gpu</Filter>
     </ClCompile>
     <ClCompile Include="source\gpu\CommandBuffer.cpp">
-      <Filter>Source Files\gpu</Filter>
-    </ClCompile>
-    <ClCompile Include="source\gpu\CommandPool.cpp">
-      <Filter>Source Files\gpu</Filter>
-    </ClCompile>
-    <ClCompile Include="source\gpu\DescriptorPool.cpp">
-      <Filter>Source Files\gpu</Filter>
-    </ClCompile>
-    <ClCompile Include="source\gpu\DescriptorSet.cpp">
       <Filter>Source Files\gpu</Filter>
     </ClCompile>
     <ClCompile Include="source\gpu\GpuDevice.cpp">
@@ -207,9 +219,6 @@
       <Filter>Source Files\gpu</Filter>
     </ClCompile>
     <ClCompile Include="source\gpu\SwapChain.cpp">
-      <Filter>Source Files\gpu</Filter>
-    </ClCompile>
-    <ClCompile Include="source\gpu\VulkanAPI.cpp">
       <Filter>Source Files\gpu</Filter>
     </ClCompile>
     <ClCompile Include="source\graphics\Font.cpp">
@@ -251,11 +260,52 @@
     <ClCompile Include="source\Main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="source\Scene.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="source\graphics\Geometry.cpp">
       <Filter>Source Files\graphics</Filter>
     </ClCompile>
+    <ClCompile Include="source\ui\UIFactory.cpp">
+      <Filter>Source Files\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="source\ui\UIManager.cpp">
+      <Filter>Source Files\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="source\ui\ScrollBar.cpp">
+      <Filter>Source Files\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="source\ui\TextField.cpp">
+      <Filter>Source Files\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="source\gpu\GpuManager.cpp">
+      <Filter>Source Files\gpu</Filter>
+    </ClCompile>
+    <ClCompile Include="source\ui\FlowLayout.cpp">
+      <Filter>Source Files\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="source\ui\PushButton.cpp">
+      <Filter>Source Files\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="source\ui\CheckBox.cpp">
+      <Filter>Source Files\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="source\ui\LayoutButton.cpp">
+      <Filter>Source Files\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="source\ui\RadioButton.cpp">
+      <Filter>Source Files\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="source\ui\OptionList.cpp">
+      <Filter>Source Files\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="source\ui\ImageView.cpp">
+      <Filter>Source Files\ui</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\plane fragment shader.frag">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="shaders\plane vertex shader.vert">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

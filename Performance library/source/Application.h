@@ -4,36 +4,29 @@
 #include "graphics\Color.h"
 #include "gpu\GradientCollection.h"
 #include "ui\Window.h"
+#include "ui\UIManager.h"
+#include "ui\UIFactory.h"
+#include "ui\FlowLayout.h"
+#include "ui\TextField.h"
+#include "ui\PushButton.h"
+#include "ui\LayoutButton.h"
+#include "ui\CheckBox.h"
+#include "ui\RadioButton.h"
 #include "gpu\GpuDevice.h"
-#include "gpu\CommandPool.h"
-#include "gpu\CommandBuffer.h"
-#include "gpu\DescriptorPool.h"
-#include "gpu\DescriptorSet.h"
-#include "gpu\SwapChain.h"
-#include "gpu\Pipeline.h"
-#include "gpu\Buffer.h"
 #include "gpu\RenderTarget.h"
 #include "gpu\Bitmap.h"
 #include "graphics\Font.h"
-#include "gpu\VulkanAPI.h"
+#include "gpu\GpuManager.h"
 #include "kernel\OperatingSystemAPI.h"
 
 using namespace ui;
 
 class Application
 {
-	friend class Scene;
 public:
 	Window *window;
-	Surface *surface;
-	GpuDevice *device;
-	CommandPool *cmdPool;
-	CommandBuffer *cmdBuffer;
-	SwapChain *swapChain;
-	RenderTarget *renderTarget;
-	Scene *scene;
+	UIObject *layout;
 	Bitmap *image;
-	Font *font;
 
 	Application();
 	~Application();

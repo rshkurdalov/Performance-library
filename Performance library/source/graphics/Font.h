@@ -3,31 +3,48 @@
 
 #pragma once
 #include "kernel\kernel.h"
-#include "math\VectorMath.h"
+#include "graphics\Geometry.h"
 #include <string>
-#include <map>
 
 namespace graphics
 {
-	HResult FtInitialize();
+	HResult FontInitialize();
 
-	HResult LoadFont(
-		std::wstring path,
-		Font **ppFont);
+	struct FontMetadata
+	{
+		uint64 fontHandler;
+		std::wstring fontName;
+		uint32 size;
+		float32 ascent;
+		float32 internalLeading;
+		float32 internalLeadingMultiplier;
+		float32 underlineOffset;
+		float32 underlineSize;
+		float32 strikethroughOffset;
+		float32 strikethroughSize;
+	};
 
 	struct CharMetadata
 	{
-		char32 code;
+		Geometry outline;
 		Vector2f advance;
-		GeometryPath *outline;
 	};
 
-	class Font
+	class FontManager
 	{
-	public:
-		std::map<wchar, CharMetadata> charData;
-
-		Font(std::map<wchar, CharMetadata> &charData);
-		~Font();
+		friend class TextLayout;
+	protected:
+		static float32 GetDPIMultiplier();
+		static HResult GetFontMetadata(
+			std::wstring &fontName,
+			float32 size,
+			bool isItalic,
+			uint32 weight,
+			FontMetadata **fontMetadata);
+		static HResult GetCharMetadata(
+			char32 code,
+			FontMetadata *font,
+			CharMetadata **charMetadata);
+		static uint32 AdjustFontWeight(uint32 value);
 	};
 }

@@ -26,7 +26,7 @@ namespace gpu
 			device->vkDevice,
 			vkPipeline,
 			nullptr);
-		device->Release();
-		swapChain->Release();
+		device->Unref();
+		swapChain->Unref();
 	}
 }

@@ -3,25 +3,21 @@
 
 #pragma once
 #include "kernel\kernel.h"
-#include <atomic>
-#include <concrt.h>
 
 namespace kernel
 {
     class SharedObject
     {
     private:
-        std::atomic<uint32> refCounter;
-		concurrency::critical_section criticalSection;
+        uint32 referenceCounter;
+
+		SharedObject(SharedObject &) {}
+		SharedObject(SharedObject &&) {}
     protected:
         SharedObject();
 		virtual ~SharedObject() {}
 	public:
         void AddRef();
-        void Release();
-        bool TryLock();
-        void Lock();
-        void Unlock();
+        void Unref();
     };
 }
-

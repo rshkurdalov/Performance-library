@@ -17,6 +17,6 @@ namespace gpu
 	Shader::~Shader()
 	{
 		vkDestroyShaderModule(device->vkDevice, vkShader, nullptr);
-		device->Release();
+		device->Unref();
 	}
 }

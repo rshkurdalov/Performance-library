@@ -5,7 +5,7 @@
 #include "kernel\kernel.h"
 #include "kernel\SharedObject.h"
 #include "kernel\OperatingSystemAPI.h"
-#include "gpu\VulkanAPI.h"
+#include "gpu\GpuDevice.h"
 
 namespace gpu
 {
@@ -14,7 +14,7 @@ namespace gpu
 		friend class GpuDevice;
 		friend class SwapChain;
 		friend HResult kernel::OSCreateSurface(
-			ui::Window *window,
+			uint64 hwnd,
 			Surface **ppSurface);
 	protected:
 		VkSurfaceKHR vkSurface;

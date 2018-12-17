@@ -20,45 +20,38 @@ namespace graphics
 
 		std::vector<float32> data;
 		uint32 count;
+
 		Vector2f LastPoint();
 	public:
 		GeometryPath();
-
 		// Path is empty if it does not have any vertex
 		bool IsEmpty();
-
 		// Reset path data and return to empty state
 		void Reset();
-
 		// Begins or continues geometry path
 		void Move(Vector2f controlPoint);
-
 		// Geometry path must not be empty
-		void AddLine(Vector2f controlPoint);
-
+		void PushLine(Vector2f controlPoint);
 		// Geometry path must not be empty
-		void AddQuadraticBezier(
+		void PushQuadraticBezier(
 			Vector2f controlPoint1,
 			Vector2f controlPoint2);
-
 		// Geometry path must not be empty
-		void AddCubicBezier(
+		void PushCubicBezier(
 			Vector2f controlPoint1,
 			Vector2f controlPoint2,
 			Vector2f controlPoint3);
-
 		// Geometry path must not be empty
 		// Rotation must be in range [0, 2*pi]
 		// Arc will not added if radiusX or radiusY is zero
-		void AddArcSegment(
+		void PushArcSegment(
 			Vector2f controlPoint,
 			float32 radiusX,
 			float32 radiusY,
 			float32 rotation,
 			bool isLarge,
 			bool isCounterclockwiseSweep);
-
 		// Concatenate two paths
-		void Append(GeometryPath *path);
+		void Append(GeometryPath &path);
 	};
 }

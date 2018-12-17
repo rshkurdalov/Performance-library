@@ -4,7 +4,7 @@
 #pragma once
 #include "kernel\kernel.h"
 #include "kernel\SharedObject.h"
-#include "gpu\VulkanAPI.h"
+#include "gpu\GpuDevice.h"
 #include <vector>
 
 namespace gpu
@@ -15,7 +15,7 @@ namespace gpu
 		friend class CommandBuffer;
 	protected:
 		GpuDevice *device;
-		CommandBuffer *cmdBuffer;
+		Surface *surface;
 		VkSwapchainCreateInfoKHR vkSwapChainCreateInfo;
 		VkSwapchainKHR vkSwapChain;
 		VkQueue vkGraphicsQueue;
@@ -28,12 +28,19 @@ namespace gpu
 		VkImage vkDepthImage;
 		VkImageView vkDepthView;
 		VkDeviceMemory vkDepthMemory;
+		VkImage msaaColorImage;
+		VkDeviceMemory msaaColorMemory;
+		VkImageView msaaImageView;
+		VkImage msaaDepthImage;
+		VkDeviceMemory msaaDepthMemory;
+		VkImageView msaaDepthView;
 		VkRenderPass vkRenderPass;
 		std::vector<VkFramebuffer> vkFramebuffers;
 		uint32 currentBuffer;
 
 		SwapChain(
 			GpuDevice *device,
+			Surface *surface,
 			VkSwapchainCreateInfoKHR &vkSwapChainCreateInfo,
 			VkSwapchainKHR vkSwapChain,
 			VkQueue vkGraphicsQueue,
@@ -46,6 +53,12 @@ namespace gpu
 			VkImage vkDepthImage,
 			VkImageView vkDepthView,
 			VkDeviceMemory vkDepthMemory,
+			VkImage msaaColorImage,
+			VkDeviceMemory msaaColorMemory,
+			VkImageView msaaImageView,
+			VkImage msaaDepthImage,
+			VkDeviceMemory msaaDepthMemory,
+			VkImageView msaaDepthView,
 			VkRenderPass vkRenderPass,
 			std::vector<VkFramebuffer> vkFramebuffers,
 			uint32 currentBuffer);
@@ -54,6 +67,7 @@ namespace gpu
 		uint32 GetWidth();
 		uint32 GetHeight();
 		uint32 GetCurrentBuffer();
+		HResult Resize(uint32 width, uint32 height);
 		void Present();
 	};
 }

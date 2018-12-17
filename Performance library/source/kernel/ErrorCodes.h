@@ -9,7 +9,8 @@ namespace kernel
 	{
 		HResultSuccess = 0,
 		HResultFail = 1,
-		HResultInvalidArg = 2,
+		HResultInvalidArgument = 2,
+		HResultCannotOpenFile = 3,
 
 		/*GpuDevice*/
 

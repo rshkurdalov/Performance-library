@@ -3,27 +3,60 @@
 
 #pragma once
 #include "kernel\kernel.h"
-#ifdef _WIN32
-#include <Windows.h>
-#endif
+#include <string>
 
 namespace kernel
 {
+	// Used by window class function
+	HResult OSCreateSurface(
+		uint64 hwnd,
+		Surface **ppSurface);
+
 	HResult OSCreateWindow(
-		const wchar *name,
+		wchar *name,
 		int32 x,
 		int32 y,
 		uint32 width,
 		uint32 height,
-		ui::Window **window);
+		UIObject *layout,
+		Window **window);
 
-	HResult OSEnterMsgLoop(
-		ui::Window *window,
-		ui::UIObject *layout);
+	void OSOpenWindow(Window *window);
 
-	HResult OSReleaseWindowHandler(ui::Window *window);
+	void OSEnableWindow(Window *window, bool value);
 
-	HResult OSCreateSurface(
-		ui::Window *window,
-		gpu::Surface **ppSurface);
+	void OSRunMsgLoop();
+
+	void OSRunModalMsgLoop(Window *window);
+
+	void OSResizeWindow(
+		Window *window,
+		uint32 width,
+		uint32 height);
+
+	void OSCloseWindow(Window *window);
+
+	// Used by window class function
+	void OSReleaseWindowHandler(Window *window);
+
+	void OSCopyTextToClipboard(std::u32string &text);
+
+	void OSGetTextFromClipboard(std::u32string *text);
+
+	// Default callback for UI manager to set cursor
+	void OSSetCursor(uint32 cursor, Window *window);
+
+	uint32 OSGetDPI();
+
+	HResult OSLoadFont(
+		wchar *fontName,
+		uint32 size,
+		bool isItalic,
+		uint32 weight,
+		FontMetadata *font);
+
+	HResult OSLoadGlyphMetadata(
+		char32 code,
+		FontMetadata *font,
+		CharMetadata *charMetadata);
 }

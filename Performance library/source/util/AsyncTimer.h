@@ -11,17 +11,30 @@ namespace util
 		friend class Time;
     protected:
         int64 period;
-        int64 lastTimestamp;
-        int64 timeExcess;
-        aligned(TimerState) state;
+        int64 startTimestamp;
+        uint64 completePeriods;
+        TimerState state;
 
         AsyncTimer();
-        ~AsyncTimer();
     public:
         void Start();
         void Refresh();
         void Stop();
+		int64 GetPeriod();
+		// Get number of complete periods
+		// accumulated from start time to now
+		// minus number of complete periods
+		// accumulated from start time to last time
+		// this function has been called
+		// Result is undefined if timer is not running
         uint64 GetTicks();
-        TimerState GetTimerState();
+		// Get number of complete periods
+		// accumulated from start time to now
+		// Result is undefined if timer is not running
+		uint64 GetCompletePeriods();
+		// Get time elapsed from beginning of current period
+		// Result is undefined if timer is not running
+		int64 GetPeriodProgress();
+        TimerState GetState();
     };
 }

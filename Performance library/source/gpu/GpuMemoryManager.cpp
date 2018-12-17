@@ -2,18 +2,17 @@
 // This file is under The Clear BSD License, see LICENSE.txt
 
 #include "gpu\GpuMemoryManager.h"
-#include "gpu\Buffer.h"
-#include "gpu\DescriptorSet.h"
 #include "gpu\GpuDevice.h"
+#include "gpu\Buffer.h"
 
 namespace gpu
 {
 	GpuMemoryManager::GpuMemoryManager(
-		Buffer *storageBuffer,
-		DescriptorSet *descSet)
+		GpuDevice *device,
+		Buffer *storageBuffer)
 	{
+		this->device = device;
 		this->storageBuffer = storageBuffer;
-		this->descSet = descSet;
 		root = new Node(InitialHeapSize);
 		heapSize = InitialHeapSize;
 	}
@@ -21,7 +20,7 @@ namespace gpu
 	{
 		delete root;
 	}
-	void GpuMemoryManager::AllocBlock(Node *node, msize size)
+	void GpuMemoryManager::AllocBlock(Node *node, uint32 size)
 	{
 		rangeDiv2 = range >> 1;
 		if (rangeDiv2 < size)
@@ -60,9 +59,9 @@ namespace gpu
 			node->maxAlloc = Max(node->left->maxAlloc, node->right->maxAlloc);
 		}
 	}
-	void GpuMemoryManager::DeallocBlock(Node *node, msize offset, msize range, msize addr)
+	void GpuMemoryManager::DeallocBlock(Node *node, uint32 offset, uint32 range, uint32 addr)
 	{
-		msize rangeDiv2 = range >> 1;
+		uint32 rangeDiv2 = range >> 1;
 		if (offset == addr)
 		{
 			if (node->allocated != 0)
@@ -98,10 +97,21 @@ namespace gpu
 		}
 		else node->maxAlloc = range;
 	}
-	msize GpuMemoryManager::Allocate(msize size)
+	uint32 GpuMemoryManager::Allocate(uint32 size)
 	{
 		if (root->maxAlloc < size)
 		{
+			void *data = new uint8[heapSize], *gpuData;
+			vkMapMemory(
+				device->vkDevice,
+				storageBuffer->vkBufferMemory,
+				0,
+				heapSize,
+				0,
+				&gpuData);
+			memcpy(data, gpuData, heapSize);
+			vkUnmapMemory(storageBuffer->device->vkDevice, storageBuffer->vkBufferMemory);
+			uint32 oldHeapSize = heapSize;
 			while (root->maxAlloc < size)
 			{
 				Node *node = new Node(heapSize << 1);
@@ -113,14 +123,24 @@ namespace gpu
 				heapSize <<= 1;
 			}
 			storageBuffer->Resize(heapSize);
-			descSet->UpdateBuffer(storageBuffer);
+			device->UpdateStorageBuffer();
+			vkMapMemory(
+				storageBuffer->device->vkDevice,
+				storageBuffer->vkBufferMemory,
+				0,
+				oldHeapSize,
+				0,
+				&gpuData);
+			memcpy(gpuData, data, oldHeapSize);
+			delete[] data;
+			vkUnmapMemory(storageBuffer->device->vkDevice, storageBuffer->vkBufferMemory);
 		}
 		offset = 0;
 		range = heapSize;
 		AllocBlock(root, size);
 		return offset;
 	}
-	void GpuMemoryManager::Deallocate(msize addr)
+	void GpuMemoryManager::Deallocate(uint32 addr)
 	{
 		DeallocBlock(root, 0, heapSize, addr);
 	}

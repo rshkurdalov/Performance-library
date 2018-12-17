@@ -4,7 +4,7 @@
 #pragma once
 #include "kernel\kernel.h"
 #include "kernel\SharedObject.h"
-#include "gpu\VulkanAPI.h"
+#include "gpu\GpuDevice.h"
 
 namespace gpu
 {

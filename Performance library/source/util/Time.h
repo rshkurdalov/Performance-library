@@ -4,11 +4,7 @@
 #pragma once
 #include "kernel\kernel.h"
 #include "kernel\SharedObject.h"
-#include <map>
-#include <thread>
-#include <condition_variable>
-#include <chrono>
-#include <concrt.h>
+#include "atc\Function.h"
 
 namespace util
 {
@@ -19,37 +15,39 @@ namespace util
 		TimerStateInactive,
 	};
 
-	class TimerEvent
+	struct TimerEvent
 	{
-	public:
+		void *param;
+		// False by default
+		// Change this value to stop timer
 		bool stop;
-		int64 nextPeriod;
-		TimerEvent() : stop(false) {}
+		// Initialized with current timer period
+		// Change to assign new period
+		int64 period;
 	};
 
+	// Time is measured in nanoseconds
     class Time
     {
-		friend class AsyncTimer;
-        friend class CallbackTimer;
-    private:
-        static concurrency::critical_section criticalSection;
-        static int64 timePoint;
-        static std::condition_variable waitPoint;
-        static std::multimap<int64, CallbackTimer*> timers;
     public:
+		static int64 Now();
 		static void CreateAsyncTimer(
-			int64 periodNanoseconds,
+			int64 period,
 			AsyncTimer **ppTimer);
+		// Callback must not change state of its calling timer
+		// Event args can stop timer or change its period
 		static void CreateCallbackTimer(
-			std::function<void(TimerEvent &)> callback,
-			int64 periodMicroseconds,
+			Function<void(TimerEvent *)> callback,
+			void *param,
+			int64 period,
 			CallbackTimer **ppTimer);
 		static void DoCallbackIn(
-			std::function<void()> callback,
-			int64 delayMicroseconds);
+			Function<void(void *)> callback,
+			void *param,
+			int64 delay);
 		static void DoCallbackAt(
-			std::function<void()> callback,
-			int64 timestampMicroseconds);
-        static void __stdcall timerProcessThread();
+			Function<void(void *)> callback,
+			void *param,
+			int64 timestamp);
     };
 }

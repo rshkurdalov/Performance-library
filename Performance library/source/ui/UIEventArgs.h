@@ -7,22 +7,8 @@
 
 namespace ui
 {
-	class UIEvent
+	struct UIMouseEvent
 	{
-	public:
-		UIObject *sender;
-		// Event requires update of the window. False by default.
-		bool requireUpdate;
-
-		UIEvent() {};
-		UIEvent(UIObject *sender)
-			: sender(sender),
-			requireUpdate(false) {}
-	};
-
-	class UIMouseEvent : public UIEvent
-	{
-	public:
 		float32 x;
 		float32 y;
 		float32 deltaX;
@@ -32,15 +18,13 @@ namespace ui
 
 		UIMouseEvent() {}
 		UIMouseEvent(
-			UIObject *sender,
 			float32 x,
 			float32 y,
 			float32 deltaX = 0.0f,
 			float32 deltaY = 0.0f,
 			MouseButton button = MouseButton::MouseButtonNone,
 			bool doubleClick = false)
-			: UIEvent(sender),
-			x(x),
+			: x(x),
 			y(y),
 			deltaX(deltaX),
 			deltaY(deltaY),
@@ -48,41 +32,46 @@ namespace ui
 			doubleClick(doubleClick) {}
 	};
 
-	class UIMouseWheelEvent : public UIEvent
+	struct UIMouseWheelEvent
 	{
-	public:
 		float32 x;
 		float32 y;
 		float32 delta;
 
 		UIMouseWheelEvent() {}
 		UIMouseWheelEvent(
-			UIObject *sender,
 			float32 x,
 			float32 y,
 			float32 delta)
-			: UIEvent(sender),
-			x(x),
+			: x(x),
 			y(y),
 			delta(delta) {}
 	};
 
-	class UIKeyboardEvent : public UIEvent
+	struct UIKeyboardEvent
 	{
-	public:
-		wchar character;
+		uint32 code;
+		bool shiftModifier;
+		bool ctrlModifier;
+		bool altModifier;
+		char32 character;
 
 		UIKeyboardEvent() {}
 		UIKeyboardEvent(
-			UIObject *sender,
-			wchar character)
-			: UIEvent(sender),
+			uint32 code,
+			bool shiftModifier,
+			bool ctrlModifier,
+			bool altModifier,
+			char32 character = U'\0')
+			: code(code),
+			shiftModifier(shiftModifier),
+			ctrlModifier(ctrlModifier),
+			altModifier(altModifier),
 			character(character) {}
 	};
 
-	class UIResizeEvent : public UIEvent
+	struct UIResizeEvent
 	{
-	public:
 		int32 oldWidth;
 		int32 oldHeight;
 		int32 newWidth;
@@ -90,15 +79,20 @@ namespace ui
 
 		UIResizeEvent() {}
 		UIResizeEvent(
-			UIObject *sender,
 			int32 oldWidth,
 			int32 oldHeight,
 			int32 newWidth,
 			int32 newHeight)
-			: UIEvent(sender),
-			oldWidth(oldWidth),
+			: oldWidth(oldWidth),
 			oldHeight(oldHeight),
 			newWidth(newWidth),
 			newHeight(newHeight) {}
+	};
+
+	struct UICloseEvent
+	{
+		bool confirmClose;
+
+		UICloseEvent() : confirmClose(true) {}
 	};
 }

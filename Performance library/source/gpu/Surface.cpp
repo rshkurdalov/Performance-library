@@ -11,8 +11,10 @@ namespace gpu
 	}
 	Surface::~Surface()
 	{
-		VkInstance vkInstance;
-		VkQueryInstance(&vkInstance);
+		GpuDevice *device;
+		QueryGpuDevice(&device);
+		VkInstance vkInstance = device->GetVkInstance();
+		device->Unref();
 		vkDestroySurfaceKHR(
 			vkInstance,
 			vkSurface,

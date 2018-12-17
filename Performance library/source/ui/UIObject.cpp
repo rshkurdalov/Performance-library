@@ -2,21 +2,16 @@
 // This file is under The Clear BSD License, see LICENSE.txt
 
 #include "ui\UIObject.h"
+#include "ui\UIManager.h"
 #include "atc\StaticOperators.h"
 #include "ui\Window.h"
-//#include "UIFactory.h"
-#include "ui\ScrollBar.h"
+#include "ui\UIFactory.h"
 
 namespace ui
 {
-	UIObject::UIObject(Window *window)
-		: foreground(Color::Black),
-		font(L"cambria"),
-		fontSizeDesc(FONT_SIZE_DEFAULT),
-		fontSize(FONT_SIZE_DEFAULT)
+	UIObject::UIObject()
 	{
-		window->AddRef();
-		this->window = window;
+		window = nullptr;
 		parent = nullptr;
 		minWidth = 0.0f;
 		maxWidth = FLT_MAX;
@@ -24,244 +19,52 @@ namespace ui
 		maxHeight = FLT_MAX;
 		padding = Rect<UISize>(0.0f, 0.0f, 0.0f, 0.0f);
 		margin = Rect<UISize>(2.0f, 2.0f, 2.0f, 2.0f);
-		vAlign = VerticalAlignTop;
 		hAlign = HorizontalAlignLeft;
-		foregroundInherit = true;
-		fontInherit = true;
+		vAlign = VerticalAlignTop;
+		flowBreak = false;
+		foreground = Color::Black;
+		bg = BackgroundTransparent;
+		borderThickness = 0.0f;
+		borderRadius = Vector2f(0.0f, 0.0f);
+		borderColor = Color::Black;
+		opacity = 1.0f;
 		visible = true;
 		enabled = true;
 		focusable = false;
-		eventHandleMask = UI_EVENT_MASK_HANDLE_ALL;
-		eventHookMask = UI_EVENT_MASK_HANDLE_NONE;
 		updateRequired = true;
-
-		/*onMouseWheelRotate.AddCallback([this] (UIMouseWheelEvent *e) -> void
-		{
-			if(IsScrollableVertically()
-				&& verticalScroll->contentSize > viewport.bottom - viewport.top + 1e-2)
-			{
-				e->denyCallbacks = true;
-				if(e->delta < 0) verticalScroll->contentOffset += verticalScroll->scrollingStep;
-				else verticalScroll->contentOffset -= verticalScroll->scrollingStep;
-				verticalScroll->contentOffset = max(verticalScroll->contentOffset, 0);
-				verticalScroll->contentOffset = min(verticalScroll->contentOffset,
-					verticalScroll->contentSize - (viewport.bottom - viewport.top));
-				e->requireUpdate = true;
-			}
-			else if(IsScrollableHorizontally()
-				&& horizontalScroll->contentSize > viewport.right - viewport.left + 1e-2)
-			{
-				e->denyCallbacks = true;
-				if(e->delta < 0) horizontalScroll->contentOffset += horizontalScroll->scrollingStep;
-				else horizontalScroll->contentOffset -= horizontalScroll->scrollingStep;
-				horizontalScroll->contentOffset = max(horizontalScroll->contentOffset, 0);
-				horizontalScroll->contentOffset = min(horizontalScroll->contentOffset,
-					horizontalScroll->contentSize - (viewport.right - viewport.left));
-				e->requireUpdate = true;
-			}
-		});*/
+		eventHandleMask = (uint32)UIHookAll;
+		eventHookMask = 0;
 	}
 	UIObject::~UIObject()
 	{
-		window->Release();
+		ClearBackground();
 	}
-	float32 UIObject::CalcWidth(float32 parentWidth)
+	void UIObject::SetWindow(Window *window)
 	{
-		float32 value = widthDesc.value;
-		if (widthDesc.sizeType == UISizeTypeRelative)
-			value *= parentWidth;
-		if (value < minWidth) return minWidth;
-		else if (value > maxWidth) return maxWidth;
-		else return value;
+		this->window = window;
+		static void(*callback)(UIObject *, void *) = [](UIObject *object, void *param) -> void
+		{
+			object->SetWindow(object->parent->window);
+		};
+		ForEach(callback, nullptr);
 	}
-	float32 UIObject::CalcHeight(float32 parentHeight)
+	Vector2f UIObject::EvaluateContentSizeImpl(
+		float32 *viewportWidth,
+		float32 *viewportHeight)
 	{
-		float32 value = heightDesc.value;
-		if (heightDesc.sizeType == UISizeTypeRelative)
-			value *= parentHeight;
-		if (value < minHeight) return minHeight;
-		else if (value > maxHeight) return maxHeight;
-		else return value;
+		return Vector2f(widthDesc.value, heightDesc.value);
 	}
-	void UIObject::Update()
+	void UIObject::GetWindow(Window **window)
 	{
-		if (!updateRequired)
-		{
-			updateRequired = true;
-			if (parent != nullptr)
-				parent->Update();
-		}
-	}
-	void UIObject::Prepare()
-	{
-		if (!updateRequired) return;
-		Lock();
-		float32 viewportWidth = width
-			- padding.left.evaluate(width)
-			- padding.right.evaluate(width),
-			viewportHeight = height
-			- padding.top.evaluate(height)
-			- padding.bottom.evaluate(height);
-		viewportWidth = Max(viewportWidth, 0.0f);
-		viewportHeight = Max(viewportHeight, 0.0f);
-		float32 contentWidth = viewportWidth,
-			contentHeight = viewportHeight;
-		PrepareImpl(
-			viewportWidth,
-			viewportHeight,
-			contentWidth,
-			contentHeight);
-		if (widthDesc.sizeType == UISizeTypeAuto)
-		{
-			viewportWidth = contentWidth;
-			float32 upperNumber = viewportWidth,
-				lowerNumber = 1.0f;
-			if (padding.left.sizeType == UISizeTypeRelative)
-				lowerNumber -= padding.left.value;
-			else upperNumber += padding.left.value;
-			if (padding.right.sizeType == UISizeTypeRelative)
-				lowerNumber -= padding.right.value;
-			else upperNumber += padding.right.value;
-			width = upperNumber / lowerNumber;
-			if (width < minWidth)
-			{
-				width = minWidth;
-				viewportWidth = width
-					- padding.left.evaluate(width)
-					- padding.right.evaluate(width);
-				updateRequired = true;
-			}
-			else if (width > maxWidth)
-			{
-				width = maxWidth;
-				viewportWidth = width
-					- padding.left.evaluate(width)
-					- padding.right.evaluate(width);
-				updateRequired = true;
-			}
-		}
-		if (heightDesc.sizeType == UISizeTypeAuto)
-		{
-			viewportHeight = contentHeight;
-			float32 upperNumber = viewportHeight,
-				lowerNumber = 1.0f;
-			if (padding.top.sizeType == UISizeTypeRelative)
-				lowerNumber -= padding.top.value;
-			else upperNumber += padding.top.value;
-			if (padding.bottom.sizeType == UISizeTypeRelative)
-				lowerNumber -= padding.bottom.value;
-			else upperNumber += padding.bottom.value;
-			height = upperNumber / lowerNumber;
-			if (height < minHeight)
-			{
-				height = minHeight;
-				viewportWidth = height
-					- padding.top.evaluate(height)
-					- padding.bottom.evaluate(height);
-				updateRequired = true;
-			}
-			else if (height > maxHeight)
-			{
-				height = maxHeight;
-				viewportWidth = height
-					- padding.top.evaluate(height)
-					- padding.bottom.evaluate(height);
-				updateRequired = true;
-			}
-		}
-		viewport.left = x + padding.left.evaluate(width);
-		viewport.right = x + width - padding.right.evaluate(width);
-		viewport.top = y + padding.top.evaluate(height);
-		viewport.bottom = y + height - padding.bottom.evaluate(height);
-		/*if (foregroundObjects[0] != nullptr)
-			dynamic_cast<ScrollBar *>(foregroundObjects[0])->contentSize = contentHeight;
-		if (foregroundObjects[1] != nullptr)
-			dynamic_cast<ScrollBar *>(foregroundObjects[1])->contentSize = contentWidth;*/
-		updateRequired = false;
-		Unlock();
-	}
-	void UIObject::Render()
-	{
-		if (!visible) return;
-		Prepare();
-		Lock();
-		ScrollBar *verticalScroll = nullptr, *horizontalScroll = nullptr;
-		/*if (foregroundObjects[0] != nullptr)
-			verticalScroll = dynamic_cast<ScrollBar *>(foregroundObjects[0]);
-		if (foregroundObjects[1] != nullptr)
-			horizontalScroll = dynamic_cast<ScrollBar *>(foregroundObjects[1]);*/
-		/*if (IsScrollableVertically()
-			&& verticalScroll->contentSize > viewport.bottom - viewport.top + 1e-2)
-		{
-			if (IsScrollableHorizontally()
-				&& horizontalScroll->contentSize > viewport.right - viewport.left + 1e-2)
-				verticalScroll->SetHeight(height - horizontalScroll->GetHeightDesc().evaluate(height));
-			else verticalScroll->SetHeight(height);
-			verticalScroll->SetWidth(verticalScroll->GetWidthDesc().evaluate(width));
-			viewport.right -= verticalScroll->GetWidth();
-		}
-		if (IsScrollableHorizontally()
-			&& horizontalScroll->contentSize > viewport.right - viewport.left + 1e-2)
-		{
-			if (IsScrollableVertically()
-				&& verticalScroll->contentSize > viewport.bottom - viewport.top + 1e-2)
-				horizontalScroll->SetWidth(width - verticalScroll->GetWidth());
-			else horizontalScroll->SetWidth(width);
-			horizontalScroll->SetHeight(horizontalScroll->GetHeightDesc().evaluate(height));
-			viewport.bottom -= horizontalScroll->GetHeight();
-		}*/
-		RenderImpl();
-		/*if (IsScrollableVertically()
-			&& verticalScroll->contentSize > viewport.bottom - viewport.top + 1e-2)
-		{
-			verticalScroll->SetX(x + width - verticalScroll->GetWidth());
-			verticalScroll->SetY(y);
-			verticalScroll->viewportSize = viewport.bottom - viewport.top;
-			verticalScroll->contentOffset = Max(verticalScroll->contentOffset, 0);
-			verticalScroll->contentOffset = Min(verticalScroll->contentOffset,
-				verticalScroll->contentSize - (viewport.bottom - viewport.top));
-			verticalScroll->SetVisible(true);
-			verticalScroll->Prepare();
-			verticalScroll->Render();
-		}
-		else if (verticalScroll != nullptr)
-		{
-			verticalScroll->contentOffset = 0;
-			verticalScroll->SetVisible(false);
-		}
-		if (IsScrollableHorizontally()
-			&& horizontalScroll->contentSize > viewport.right - viewport.left + 1e-2)
-		{
-			horizontalScroll->SetX(x);
-			horizontalScroll->SetY(y + height - horizontalScroll->GetHeight());
-			horizontalScroll->viewportSize = viewport.right - viewport.left;
-			horizontalScroll->contentOffset = Max(horizontalScroll->contentOffset, 0);
-			horizontalScroll->contentOffset = Min(horizontalScroll->contentOffset,
-				horizontalScroll->contentSize - (viewport.right - viewport.left));
-			horizontalScroll->SetVisible(true);
-			horizontalScroll->Prepare();
-			horizontalScroll->Render();
-		}
-		else if (verticalScroll != nullptr)
-		{
-			horizontalScroll->contentOffset = 0;
-			horizontalScroll->SetVisible(false);
-		}*/
-		Unlock();
-	}
-
-	Window *UIObject::GetWindow()
-	{
-		return window;
+		if (this->window != nullptr)
+			this->window->AddRef();
+		*window = this->window;
 	}
 	void UIObject::SetParent(UIObject *object)
 	{
 		parent = object;
-		if (foregroundInherit)
-			SetForeground(foreground, true);
-		if (fontInherit)
-			SetFont(font, true);
-		SetFontSizeDesc(fontSizeDesc);
+		if (parent != nullptr)
+			SetWindow(object->window);
 	}
 	void UIObject::GetParent(UIObject **parent)
 	{
@@ -269,25 +72,52 @@ namespace ui
 			this->parent->AddRef();
 		*parent = this->parent;
 	}
-	void UIObject::SetX(float32 value)
+	void UIObject::SetPosition(Vector2f value)
 	{
-		x = value;
+		position = value;
+		effectivePosition = position
+			+ Vector2f(margin.left.evaluate(width), margin.top.evaluate(height));
 	}
-	float32 UIObject::GetX()
+	Vector2f UIObject::GetPosition()
 	{
-		return x;
+		return position;
 	}
-	void UIObject::SetY(float32 value)
+	Vector2f UIObject::GetEffectivePosition()
 	{
-		y = value;
+		return effectivePosition;
 	}
-	float32 UIObject::GetY()
+	Vector2f UIObject::GetAbsolutePosition()
 	{
-		return y;
+		Vector2f point = effectivePosition;
+		UIObject *parentObject = parent;
+		while (parentObject != nullptr)
+		{
+			point += parentObject->effectivePosition;
+			parentObject = parentObject->parent;
+		}
+		return point;
+	}
+	float32 UIObject::GetWidth()
+	{
+		return width;
+	}
+	float32 UIObject::GetEffectiveWidth()
+	{
+		return effectiveWidth;
+	}
+	float32 UIObject::GetHeight()
+	{
+		return height;
+	}
+	float32 UIObject::GetEffectiveHeight()
+	{
+		return effectiveHeight;
 	}
 	void UIObject::SetWidthDesc(UISize widthDesc)
 	{
 		this->widthDesc = widthDesc;
+		if (parent != nullptr)
+			parent->Update();
 	}
 	UISize UIObject::GetWidthDesc()
 	{
@@ -296,6 +126,8 @@ namespace ui
 	void UIObject::SetMinWidth(float32 value)
 	{
 		minWidth = value;
+		if (parent != nullptr)
+			parent->Update();
 	}
 	float32 UIObject::GetMinWidth()
 	{
@@ -304,23 +136,18 @@ namespace ui
 	void UIObject::SetMaxWidth(float32 value)
 	{
 		maxWidth = value;
+		if (parent != nullptr)
+			parent->Update();
 	}
 	float32 UIObject::GetMaxWidth()
 	{
 		return maxWidth;
 	}
-	void UIObject::SetWidth(float32 value)
-	{
-		if (!ScalarNearEqual(width, value, UI_EPSILON)) Update();
-		width = value;
-	}
-	float32 UIObject::GetWidth()
-	{
-		return width;
-	}
 	void UIObject::SetHeightDesc(UISize heightDesc)
 	{
 		this->heightDesc = heightDesc;
+		if (parent != nullptr)
+			parent->Update();
 	}
 	UISize UIObject::GetHeightDesc()
 	{
@@ -329,6 +156,8 @@ namespace ui
 	void UIObject::SetMinHeight(float32 value)
 	{
 		minHeight = value;
+		if (parent != nullptr)
+			parent->Update();
 	}
 	float32 UIObject::GetMinHeight()
 	{
@@ -337,23 +166,101 @@ namespace ui
 	void UIObject::SetMaxHeight(float32 value)
 	{
 		maxHeight = value;
+		if (parent != nullptr)
+			parent->Update();
 	}
 	float32 UIObject::GetMaxHeight()
 	{
 		return maxHeight;
 	}
-	void UIObject::SetHeight(float32 value)
+	Vector2f UIObject::EvaluateSize(
+		Vector2f parentSize,
+		float32 *defaultWidth,
+		float32 *defaultHeight,
+		bool forceAutoWidth,
+		bool forceAutoHeight)
 	{
-		if (!ScalarNearEqual(height, value, UI_EPSILON)) Update();
-		height = value;
-	}
-	float32 UIObject::GetHeight()
-	{
-		return height;
+		Vector2f size(widthDesc.value, heightDesc.value);
+		if (widthDesc.sizeType == UISizeTypeRelative)
+			size.x *= parentSize.x;
+		size.x = Max(minWidth, size.x);
+		size.x = Min(maxWidth, size.x);
+		if (heightDesc.sizeType == UISizeTypeRelative)
+			size.y *= parentSize.y;
+		size.y = Max(minHeight, size.y);
+		size.y = Min(maxHeight, size.y);
+		forceAutoWidth |= widthDesc.sizeType == UISizeTypeAuto;
+		forceAutoHeight |= heightDesc.sizeType == UISizeTypeAuto || forceAutoHeight;
+		if (forceAutoWidth || forceAutoHeight)
+		{
+			Vector2f defaultSize = size;
+			if (defaultWidth == nullptr && !forceAutoWidth)
+				defaultWidth = &defaultSize.x;
+			if (defaultHeight == nullptr && !forceAutoHeight)
+				defaultHeight = &defaultSize.y;
+			if (defaultWidth != nullptr)
+			{
+				*defaultWidth = Min(maxWidth, *defaultWidth);
+				*defaultWidth = Max(minWidth, *defaultWidth);
+				*defaultWidth -= margin.left.evaluate(*defaultWidth)
+					+ margin.right.evaluate(*defaultWidth)
+					+ padding.left.evaluate(*defaultWidth)
+					+ padding.right.evaluate(*defaultWidth);
+			}
+			if (defaultHeight != nullptr)
+			{
+				*defaultHeight = Min(maxHeight, *defaultHeight);
+				*defaultHeight = Max(minHeight, *defaultHeight);
+				*defaultHeight -= margin.top.evaluate(*defaultHeight)
+					+ margin.bottom.evaluate(*defaultHeight)
+					+ padding.top.evaluate(*defaultHeight)
+					+ padding.bottom.evaluate(*defaultHeight);
+			}
+			Vector2f autoSize = EvaluateContentSizeImpl(defaultWidth, defaultHeight);
+			float32 denominator = 1.0f;
+			if (padding.left.sizeType == UISizeTypeRelative)
+				denominator -= padding.left.value;
+			else autoSize.x += padding.left.value;
+			if (padding.right.sizeType == UISizeTypeRelative)
+				denominator -= padding.right.value;
+			else autoSize.x += padding.right.value;
+			if (margin.left.sizeType == UISizeTypeRelative)
+				denominator -= margin.left.value;
+			else autoSize.x += margin.left.value;
+			if (margin.right.sizeType == UISizeTypeRelative)
+				denominator -= margin.right.value;
+			else autoSize.x += margin.right.value;
+			autoSize.x /= denominator;
+			autoSize.x = Max(minWidth, autoSize.x);
+			autoSize.x = Min(maxWidth, autoSize.x);
+			denominator = 1.0f;
+			if (padding.top.sizeType == UISizeTypeRelative)
+				denominator -= padding.top.value;
+			else autoSize.y += padding.top.value;
+			if (padding.bottom.sizeType == UISizeTypeRelative)
+				denominator -= padding.bottom.value;
+			else autoSize.y += padding.bottom.value;
+			if (margin.top.sizeType == UISizeTypeRelative)
+				denominator -= margin.top.value;
+			else autoSize.y += margin.top.value;
+			if (margin.bottom.sizeType == UISizeTypeRelative)
+				denominator -= margin.bottom.value;
+			else autoSize.y += margin.bottom.value;
+			autoSize.y /= denominator;
+			autoSize.y = Max(minHeight, autoSize.y);
+			autoSize.y = Min(maxHeight, autoSize.y);
+			if (forceAutoWidth)
+				size.x = autoSize.x;
+			if (forceAutoHeight)
+				size.y = autoSize.y;
+		}
+		return size;
 	}
 	void UIObject::SetMargin(Rect<UISize> &margin)
 	{
 		this->margin = margin;
+		if (parent != nullptr)
+			parent->Update();
 	}
 	Rect<UISize> UIObject::GetMargin()
 	{
@@ -362,160 +269,146 @@ namespace ui
 	void UIObject::SetPadding(Rect<UISize> &padding)
 	{
 		this->padding = padding;
+		Update();
 	}
 	Rect<UISize> UIObject::GetPadding()
 	{
 		return padding;
 	}
-	void UIObject::SetVerticalAlign(VerticalAlign align)
-	{
-		vAlign = align;
-	}
-	VerticalAlign UIObject::GetVerticalAlign()
-	{
-		return vAlign;
-	}
 	void UIObject::SetHorizontalAlign(HorizontalAlign align)
 	{
 		hAlign = align;
+		if (parent != nullptr)
+			parent->Update();
 	}
 	HorizontalAlign UIObject::GetHorizontalAlign()
 	{
 		return hAlign;
 	}
-	void UIObject::SetForeground(Color color, bool inherit)
+	void UIObject::SetVerticalAlign(VerticalAlign align)
 	{
-		Lock();
-		foregroundInherit = inherit;
-		if (inherit && parent != nullptr)
-			foreground = parent->foreground;
-		else foreground = color;
-		void(*callback)(UIObject *) = [] (UIObject *object) -> void
-		{
-			if (object->foregroundInherit)
-				object->SetForeground(object->parent->foreground, true);
-		};
-		ForEachImpl(callback);
-		Update();
-		Unlock();
+		vAlign = align;
+		if (parent != nullptr)
+			parent->Update();
+	}
+	VerticalAlign UIObject::GetVerticalAlign()
+	{
+		return vAlign;
+	}
+	void UIObject::EnableFlowBreak(bool value)
+	{
+		flowBreak = value;
+		if (parent != nullptr)
+			parent->Update();
+	}
+	bool UIObject::IsFlowBreakEnabled()
+	{
+		return flowBreak;
+	}
+	void UIObject::SetForeground(Color value)
+	{
+		foreground = value;
+		Repaint();
 	}
 	Color UIObject::GetForeground()
 	{
-		Lock();
-		Color value = foreground;
-		Unlock();
-		return value;
+		return foreground;
 	}
-	void UIObject::SetFont(std::wstring &font, bool inherit)
+	void UIObject::ClearBackground()
 	{
-		Lock();
-		fontInherit = inherit;
-		if (inherit && parent != nullptr)
-			this->font = parent->font;
-		else this->font = font;
-		void(*callback)(UIObject *) = [] (UIObject *object) -> void
-		{
-			if (object->fontInherit)
-				object->SetFont(object->parent->font, true);
-		};
-		ForEachImpl(callback);
-		Update();
-		Unlock();
+		if (bg == BackgroundLinearGradient
+			|| bg == BackgroundRadialGradient)
+			bgGradient->Unref();
+		bg = BackgroundTransparent;
+		Repaint();
 	}
-	std::wstring UIObject::GetFont()
+	void UIObject::SetBackgroundColor(Color value)
 	{
-		Lock();
-		std::wstring value = font;
-		Unlock();
-		return value;
+		ClearBackground();
+		bg = BackgroundSolidColor;
+		bgColor = value;
 	}
-	void UIObject::SetFontSizeDesc(UISize sizeDesc)
+	void UIObject::SetBackgroundLinearGradient(
+		GradientCollection *collection,
+		UISize x1,
+		UISize y1,
+		UISize x2,
+		UISize y2,
+		ColorInterpolationMode colorMode)
 	{
-		Lock();
-		fontSizeDesc = sizeDesc;
-		if (sizeDesc.sizeType == UISizeTypeRelative)
-		{
-			if (parent != nullptr)
-				fontSize = sizeDesc.value*parent->fontSize;
-			else fontSize = FONT_SIZE_DEFAULT;
-		}
-		else fontSize = sizeDesc.value;
-		void(*callback)(UIObject *) = [] (UIObject *object) -> void
-		{
-			if (object->fontSizeDesc.sizeType == UISizeTypeRelative)
-				object->SetFontSizeDesc(object->GetFontSizeDesc());
-		};
-		ForEachImpl(callback);
-		Update();
-		Unlock();
+		ClearBackground();
+		collection->AddRef();
+		bg = BackgroundLinearGradient;
+		bgGradient = collection;
+		bgGradientParam[0] = x1;
+		bgGradientParam[1] = y1;
+		bgGradientParam[2] = x2;
+		bgGradientParam[3] = y2;
+		bgColorMode = colorMode;
 	}
-	UISize UIObject::GetFontSizeDesc()
+	void UIObject::SetBackgroundRadialGradient(
+		GradientCollection *collection,
+		UISize cx,
+		UISize cy,
+		UISize rx,
+		UISize ry,
+		UISize offsetX,
+		UISize offsetY,
+		ColorInterpolationMode colorMode)
 	{
-		return fontSizeDesc;
+		ClearBackground();
+		collection->AddRef();
+		bg = BackgroundRadialGradient;
+		bgGradient = collection;
+		bgGradientParam[0] = cx;
+		bgGradientParam[1] = cy;
+		bgGradientParam[2] = rx;
+		bgGradientParam[3] = ry;
+		bgGradientParam[4] = offsetX;
+		bgGradientParam[5] = offsetY;
+		bgColorMode = colorMode;
 	}
-	float32 UIObject::GetFontSize()
+	void UIObject::SetBorderThickness(float32 value)
 	{
-		return fontSize;
+		borderThickness = value;
+		Repaint();
 	}
-	/*void UIObject::EnableVerticalScrolling(bool value)
+	float32 UIObject::GetBorderThickness()
 	{
-		if (value==true && foregroundObjects[0] == nullptr)
-		{
-			//window->GetFactory()->CreateScrollBar(true, &foregroundObjects[0]);
-			foregroundObjects[0]->SetParent(this);
-		}
+		return borderThickness;
 	}
-	bool UIObject::IsScrollableVertically()
+	void UIObject::SetBorderRadius(Vector2f value)
 	{
-		return foregroundObjects[0]!=nullptr
-			&& foregroundObjects[0]->IsEnabled();
+		borderRadius = value;
+		Repaint();
 	}
-	void UIObject::SetVerticalScrollOffset(float32 value)
+	Vector2f UIObject::GetBorderRadius()
 	{
-		if (foregroundObjects[0] == nullptr) return;
-		dynamic_cast<ScrollBar *>(foregroundObjects[0])->contentOffset = value;
+		return borderRadius;
 	}
-	float32 UIObject::GetVerticalScrollOffset()
+	void UIObject::SetBorderColor(Color value)
 	{
-		if (foregroundObjects[0] == nullptr) return 0;
-		return dynamic_cast<ScrollBar *>(foregroundObjects[0])->contentOffset;
+		borderColor = value;
+		Repaint();
 	}
-	float32 UIObject::GetVerticalContentSize()
+	Color UIObject::GetBorderColor()
 	{
-		if (foregroundObjects[0] == nullptr) return 0;
-		return dynamic_cast<ScrollBar *>(foregroundObjects[0])->contentSize;
+		return borderColor;
 	}
-	void UIObject::EnableHorizontalScrolling(bool value)
+	void UIObject::SetOpacity(float32 value)
 	{
-		if (value == true && foregroundObjects[1] == nullptr)
-		{
-			//window->GetFactory()->CreateScrollBar(false, &foregroundObjects[1]);
-			foregroundObjects[1]->SetParent(this);
-		}
+		opacity = value;
+		Repaint();
 	}
-	bool UIObject::IsScrollableHorizontally()
+	float32 UIObject::GetOpacity()
 	{
-		return foregroundObjects[1] != nullptr
-			&& foregroundObjects[1]->IsEnabled();
+		return opacity;
 	}
-	void UIObject::SetHorizontalScrollOffset(float32 value)
-	{
-		if (foregroundObjects[1] == nullptr) return;
-		dynamic_cast<ScrollBar *>(foregroundObjects[1])->contentOffset = value;
-	}
-	float32 UIObject::GetHorizontalScrollOffset()
-	{
-		if (foregroundObjects[1] == nullptr) return 0;
-		return dynamic_cast<ScrollBar *>(foregroundObjects[1])->contentOffset;
-	}
-	float32 UIObject::GetHorizontalContentSize()
-	{
-		if (foregroundObjects[0] == nullptr) return 0;
-		return dynamic_cast<ScrollBar *>(foregroundObjects[1])->contentSize;
-	}*/
 	void UIObject::SetVisible(bool value)
 	{
+		if (visible == value) return;
 		visible = value;
+		Repaint();
 	}
 	bool UIObject::IsVisible()
 	{
@@ -523,7 +416,9 @@ namespace ui
 	}
 	void UIObject::SetEnabled(bool value)
 	{
+		if (enabled == value) return;
 		enabled = value;
+		Repaint();
 	}
 	bool UIObject::IsEnabled()
 	{
@@ -532,67 +427,107 @@ namespace ui
 	void UIObject::SetFocusable(bool value)
 	{
 		focusable = value;
+		if (!focusable && UIManager::IsFocused(this))
+			UIManager::SetFocus(nullptr);
+		Repaint();
 	}
 	bool UIObject::IsFocusable()
 	{
 		return focusable;
 	}
-	void UIObject::SetMouseHoverable(bool value)
+	void UIObject::EnableEventHandle(UIHook event, bool value)
 	{
-		if (value) eventHandleMask |= UI_EVENT_MOUSE_HOVER_FLAG;
-		else eventHandleMask &= ~UI_EVENT_MOUSE_HOVER_FLAG;
+		if (value) eventHandleMask |= (uint32)event;
+		else eventHandleMask &= ~(uint32)event;
 	}
-	bool UIObject::IsMouseHoverable()
+	bool UIObject::IsEventHandled(UIHook event)
 	{
-		return eventHandleMask & UI_EVENT_MOUSE_HOVER_FLAG;
+		return eventHandleMask & (uint32)event;
 	}
-	void UIObject::SetMouseClickable(MouseButton button, bool value)
+	void UIObject::EnableEventHook(UIHook event, bool value)
 	{
-		if (value) eventHandleMask |= UI_EVENT_MOUSE_CLICK_FLAG(button);
-		else eventHandleMask &= ~UI_EVENT_MOUSE_CLICK_FLAG(button);
+		if (value) eventHookMask |= (uint32)event;
+		else eventHookMask &= ~(uint32)event;
 	}
-	bool UIObject::IsMouseClickable(MouseButton button)
+	bool UIObject::IsEventHooked(UIHook event)
 	{
-		return eventHandleMask & UI_EVENT_MOUSE_CLICK_FLAG(button);
+		return eventHookMask & (uint32)event;
 	}
-	void UIObject::SetMouseWheelRotatable(bool value)
+	void UIObject::Update()
 	{
-		if (value) eventHandleMask |= UI_EVENT_MOUSE_WHEEL_ROTATE_FLAG;
-		else eventHandleMask &= ~UI_EVENT_MOUSE_WHEEL_ROTATE_FLAG;
+		if (!updateRequired)
+		{
+			updateRequired = true;
+			Repaint();
+			if (parent != nullptr)
+				parent->Update();
+		}
 	}
-	bool UIObject::isMouseWheelRotatable()
+	void UIObject::Prepare(
+		float32 width,
+		float32 height)
 	{
-		return eventHandleMask & UI_EVENT_MOUSE_WHEEL_ROTATE_FLAG;
+		if (!updateRequired
+			&& ScalarNearEqual(this->width, width, UIEps)
+			&& ScalarNearEqual(this->height, height, UIEps)) return;
+		this->width = width;
+		this->height = height;
+		effectivePosition = position + Vector2f(margin.left.evaluate(width), margin.top.evaluate(height));
+		effectiveWidth = width - margin.left.evaluate(width) - margin.right.evaluate(width);
+		effectiveHeight = height - margin.top.evaluate(height) - margin.bottom.evaluate(height);
+		viewport.left = padding.left.evaluate(width);
+		viewport.right = effectiveWidth - padding.right.evaluate(width);
+		viewport.top = padding.top.evaluate(height);
+		viewport.bottom = effectiveHeight - padding.bottom.evaluate(height);
+		PrepareImpl();
+		updateRequired = false;
 	}
-	void UIObject::SetMouseHoverHooking(bool value)
+	void UIObject::Repaint()
 	{
-		if (value) eventHookMask |= UI_EVENT_MOUSE_HOVER_FLAG;
-		else eventHookMask &= ~UI_EVENT_MOUSE_HOVER_FLAG;
+
 	}
-	bool UIObject::IsMouseHoverHookable()
+	void UIObject::Render(RenderTarget *rt, Vector2f p)
 	{
-		return eventHookMask & UI_EVENT_MOUSE_HOVER_FLAG;
+		if (!visible) return;
+		rt->SetOpacity(opacity);
+		if (bg != BackgroundTransparent)
+		{
+			if (bg == BackgroundSolidColor)
+				rt->SetSolidColorBrush(bgColor);
+			else if (bg == BackgroundLinearGradient)
+			{
+				rt->SetColorInterpolationMode(bgColorMode);
+				rt->SetLinearGradientBrush(
+					bgGradient,
+					p + Vector2f(bgGradientParam[0].evaluate(effectiveWidth), bgGradientParam[1].evaluate(effectiveHeight)),
+					p + Vector2f(bgGradientParam[2].evaluate(effectiveWidth), bgGradientParam[3].evaluate(effectiveHeight)));
+			}
+			else if (bg == BackgroundRadialGradient)
+			{
+				rt->SetColorInterpolationMode(bgColorMode);
+				rt->SetRadialGradientBrush(
+					bgGradient,
+					p + Vector2f(bgGradientParam[0].evaluate(effectiveWidth), bgGradientParam[1].evaluate(effectiveHeight)),
+					bgGradientParam[2].evaluate(effectiveWidth),
+					bgGradientParam[3].evaluate(effectiveHeight),
+					Vector2f(bgGradientParam[4].evaluate(effectiveWidth), bgGradientParam[5].evaluate(effectiveHeight)));
+			}
+			if (borderRadius == Vector2f(0.0f, 0.0f))
+				rt->FillRectangle(p.x, p.y, effectiveWidth, effectiveHeight);
+			else rt->FillRoundedRectangle(p.x, p.y, effectiveWidth, effectiveHeight, borderRadius.x, borderRadius.y);
+		}
+		if (borderThickness >= UIEps)
+		{
+			rt->SetSolidColorBrush(borderColor);
+			if (borderRadius == Vector2f(0.0f, 0.0f))
+				rt->DrawRectangle(p.x, p.y, effectiveWidth, effectiveHeight, borderThickness);
+			else rt->DrawRoundedRectangle(p.x, p.y, effectiveWidth, effectiveHeight, borderRadius.x, borderRadius.y, borderThickness);
+		}
+		RenderImpl(rt, p);
 	}
-	void UIObject::SetMouseClickHooking(MouseButton button, bool value)
+	bool UIObject::HitTest(Vector2f point)
 	{
-		if (value) eventHookMask |= UI_EVENT_MOUSE_CLICK_FLAG(button);
-		else eventHookMask &= ~UI_EVENT_MOUSE_CLICK_FLAG(button);
-	}
-	bool UIObject::IsMouseClickHookable(MouseButton button)
-	{
-		return eventHookMask & UI_EVENT_MOUSE_CLICK_FLAG(button);
-	}
-	void UIObject::SetMouseWheelRotateHooking(bool value)
-	{
-		if (value) eventHookMask |= UI_EVENT_MOUSE_WHEEL_ROTATE_FLAG;
-		else eventHookMask &= ~UI_EVENT_MOUSE_WHEEL_ROTATE_FLAG;
-	}
-	bool UIObject::IsMouseWheelRotateHookable()
-	{
-		return eventHookMask & UI_EVENT_MOUSE_WHEEL_ROTATE_FLAG;
-	}
-	bool UIObject::ContainsPoint(Vector2f point)
-	{
-		return RectContainsPoint(Rectf(x, y, x + width, y + height), point);
+		return point.x >= 0.0f && point.x <= effectiveWidth
+			&& point.y >= 0.0f && point.y <= effectiveHeight;
 	}
 }

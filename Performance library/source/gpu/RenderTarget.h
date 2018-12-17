@@ -8,6 +8,7 @@
 #include "graphics\Color.h"
 #include "algo\DistanceGeometry.h"
 #include "gpu\GradientCollection.h"
+#include "graphics\Geometry.h"
 
 namespace gpu
 {
@@ -16,6 +17,14 @@ namespace gpu
 		friend class GpuDevice;
 	protected:
 		static const uint32 vertexBufferSize = 10000 * 4 * sizeof(float32);
+		static const uint32 renderModeGeometry = 0;
+		static const uint32 renderModeLine = 1;
+		static const uint32 renderModeRectangleOutline = 2;
+		static const uint32 renderModeRectangle = 3;
+		static const uint32 renderModeRoundedRectangleOutline = 4;
+		static const uint32 renderModeRoundedRectangle = 5;
+		static const uint32 renderModeEllispeOutline = 6;
+		static const uint32 renderModeEllipse = 7;
 		static const uint32 colorModeSolidColor = 0;
 		static const uint32 colorModeBitmap = 1;
 		static const uint32 colorModeLinearGradient = 2;
@@ -24,36 +33,51 @@ namespace gpu
 
 		struct FragmentConstants
 		{
-			int32 scanlineOffset;
-			int32 scanlineStart;
-			int32 scanlineHeight;
-			int32 scanlineWidth;
-			uint32 param[12];
 			uint32 colorMode;
 			uint32 colorOffset;
 			uint32 colorCount;
-			float32 paramf[11];
+			float32 paramf[14];
+			uint32 renderMode;
+			Matrix3x2f transform;
+			float32 decayX;
+			float32 decayY;
+			int32 xtableOffset;
+			int32 xtableStart;
+			int32 xtableHeight;
+			int32 xtableWidth;
 			uint32 interpolationMode;
 			float32 opacity;
 		} fc;
-		float32 projX;
-		float32 projY;
+		GpuDevice *device;
 		SwapChain *swapChain;
 		Buffer *vertexBuffer;
 		CommandBuffer *cmdBuffer;
 		Pipeline *pipeline;
 		Vector2f *vertices;
 		uint32 currentVertex;
+		float32 projX;
+		float32 projY;
 
 		RenderTarget(
+			GpuDevice *device,
 			SwapChain *swapChain,
 			Buffer *vertexBuffer,
 			CommandBuffer *cmdBuffer,
 			Pipeline *pipeline);
 		~RenderTarget();
+		void PushVertex(Vector2f vertex);
 	public:
+		HResult CreateBitmap(
+			uint32 width,
+			uint32 height,
+			Bitmap **ppBitmap);
+		HResult CreateGradientCollection(
+			GradientStop *stops,
+			uint32 count,
+			GradientCollection **ppGradientCollection);
 		void Begin();
 		void End();
+		void Resize(uint32 width, uint32 height);
 		void SetSolidColorBrush(Color color);
 		void SetLinearGradientBrush(
 			GradientCollection *gradientCollection,
@@ -74,11 +98,77 @@ namespace gpu
 		void SetColorInterpolationMode(ColorInterpolationMode value);
 		ColorInterpolationMode GetColorInterpolationMode();
 		void PushScissor(
-			int32 x,
-			int32 y,
-			uint32 width,
-			uint32 height);
+			float32 x,
+			float32 y,
+			float32 width,
+			float32 height);
 		void PopScissor();
-		void Render(Geometry *geometry);
+		void RenderGeometry(
+			Geometry &geometry,
+			float32 translateX = 0.0f,
+			float32 translateY = 0.0f,
+			float32 rotation = 0.0f,
+			float32 originX = 0.0f,
+			float32 originY = 0.0f);
+		void DrawLine(
+			Vector2f a,
+			Vector2f b,
+			float32 lineWidth = 1.0f,
+			float32 rotation = 0.0f,
+			float32 originX = 0.0f,
+			float32 originY = 0.0f);
+		void DrawRectangle(
+			float32 x,
+			float32 y,
+			float32 width,
+			float32 height,
+			float32 lineWidth = 1.0f,
+			float32 rotation = 0.0f,
+			float32 originX = 0.0f,
+			float32 originY = 0.0f);
+		void FillRectangle(
+			float32 x,
+			float32 y,
+			float32 width,
+			float32 height,
+			float32 rotation = 0.0f,
+			float32 originX = 0.0f,
+			float32 originY = 0.0f);
+		void DrawRoundedRectangle(
+			float32 x,
+			float32 y,
+			float32 width,
+			float32 height,
+			float32 rx,
+			float32 ry,
+			float32 lineWidth = 1.0f,
+			float32 rotation = 0.0f,
+			float32 originX = 0.0f,
+			float32 originY = 0.0f);
+		void FillRoundedRectangle(
+			float32 x,
+			float32 y,
+			float32 width,
+			float32 height,
+			float32 rx,
+			float32 ry,
+			float32 rotation = 0.0f,
+			float32 originX = 0.0f,
+			float32 originY = 0.0f);
+		void DrawEllipse(
+			Vector2f center,
+			float32 rx,
+			float32 ry,
+			float32 lineWidth = 1.0f,
+			float32 rotation = 0.0f,
+			float32 originX = 0.0f,
+			float32 originY = 0.0f);
+		void FillEllipse(
+			Vector2f center,
+			float32 rx,
+			float32 ry,
+			float32 rotation = 0.0f,
+			float32 originX = 0.0f,
+			float32 originY = 0.0f);
 	};
 }

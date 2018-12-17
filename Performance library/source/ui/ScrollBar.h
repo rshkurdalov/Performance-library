@@ -4,25 +4,24 @@
 #pragma once
 #include "UIObject.h"
 
-#define SCROLL_BAR_DEFAULT_SIZE 8
-#define SCROLL_BAR_DEFAULT_STEP 20
-
 namespace ui
 {
     class ScrollBar : public UIObject
     {
-        friend class UIFactory;
-        friend class UIObject;
     protected:
         bool isVertical;
         float32 viewportSize;
         float32 contentSize;
         float32 contentOffset;
-        float32 scrollingStep;
-        float32 sliderSize;
-        Rectf sliderRect;
+		float32 sliderSize;
 
-        ScrollBar(bool isVertical, Window *window);
-        void RenderImpl();
+		void PrepareImpl();
+        void RenderImpl(RenderTarget *rt, Vector2f p);
+	public:
+		ScrollBar(bool isVertical);
+		void SetViewportSize(float32 value);
+		void SetContentSize(float32 value);
+		void SetOffset(float32 value);
+		float32 GetOffset();
     };
 }

@@ -8,27 +8,26 @@
 
 namespace util
 {
-	template<typename EventArgsType>
-	class Observer
+	template<typename ...Args> class Observer
 	{
 	protected:
 		struct Listener
 		{
-			Function<bool(EventArgsType *, void *)> callback;
+			Function<void(Args..., void *)> callback;
 			void *param;
 		};
 		std::vector<Listener> callbacks;
 	public:
 		Observer() {}
-		void AddCallback(Function<bool(EventArgsType *, void *)> callback, void *param)
+		void AddCallback(Function<void(Args..., void *)> callback, void *param = nullptr)
 		{
-			callbacks.push_back({callback, param});
+			callbacks.push_back({ callback, param });
 		}
-		void RemoveCallback(Function<bool(EventArgsType *, void *)> callback)
+		void RemoveCallback(Function<void(Args..., void *)> callback)
 		{
-			for (msize i = 0; i < callbacks.size(); i++)
+			for (uint32 i = 0; i < callbacks.size(); i++)
 			{
-				if (callbacks[i].Ptr == callback.Ptr)
+				if (callbacks[i].callback.fptr == callback.fptr)
 				{
 					callbacks.erase(callbacks.begin() + i);
 					return;
@@ -39,13 +38,12 @@ namespace util
 		{
 			callbacks.clear();
 		}
-		void Notify(EventArgsType *e)
+		void Notify(Args... args)
 		{
-			msize iter = 0;
-			while (iter < callbacks.size())
-				if (!callbacks[iter].callback(e, callbacks[iter].param))
-					callbacks.erase(callbacks.begin() + iter);
-				else iter++;
+			for (uint32 iter = 0; iter < callbacks.size(); iter++)
+				callbacks[iter].callback(
+					AppendRValue<Args...>(args)...,
+					callbacks[iter].param);
 		}
 	};
 }

@@ -27,11 +27,11 @@ namespace gpu
 		friend class RenderTarget;
 	protected:
 		GpuDevice *device;
-		msize memOffset;
+		uint32 memOffset;
 		uint32 count;
 		GradientCollection(
 			GpuDevice *device,
-			msize memOffset,
+			uint32 memOffset,
 			uint32 count);
 		~GradientCollection();
 	};

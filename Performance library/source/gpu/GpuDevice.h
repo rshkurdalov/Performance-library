@@ -2,9 +2,12 @@
 // This file is under The Clear BSD License, see LICENSE.txt
 
 #pragma once
+#pragma comment(lib, "dependencies\\vulkan\\lib32\\vulkan-1.lib")
 #include "kernel\kernel.h"
+#define VK_USE_PLATFORM_WIN32_KHR
+#include "vulkan\vulkan.h"
 #include "kernel\SharedObject.h"
-#include "gpu\VulkanAPI.h"
+#include "gpu\GpuManager.h"
 #include "graphics\Color.h"
 #include "gpu\GradientCollection.h"
 #include <vector>
@@ -29,63 +32,79 @@ namespace gpu
 		friend class Bitmap;
 		friend class GradientCollection;
 		friend class Geometry;
-		friend HResult VkInitialize();
+		friend HResult GpuInitialize();
 	protected:
+		VkInstance vkInstance;
 		VkPhysicalDevice vkPhysicalDevice;
 		VkPhysicalDeviceProperties vkDeviceProp;
 		VkDevice vkDevice;
 		std::vector<VkQueueFamilyProperties> familyProp;
+		VkCommandPool vkCmdPool;
+		VkDescriptorPool vkDescPool;
+		VkDescriptorSetLayout descSetLayout;
+		VkDescriptorSet vkDescSet;
+		VkPipelineLayout vkPipelineLayout;
 		uint32 graphicsQueueFamilyIndex;
 		VkQueue vkGraphicsQueue;
-		VkSampleCountFlagBits msaa;
-		VkPipelineLayout vkPipelineLayout;
-		DescriptorSet *descSet;
 		Buffer *storageBuffer;
-		Buffer *vertexBuffer;
-		msize geometryMemory;
 		GpuMemoryManager *memManager;
-		concurrency::critical_section csMemory;
-	protected:
+		concurrency::critical_section memorySection;
+		VkSampleCountFlagBits msaa;
+
 		GpuDevice(
+			VkInstance vkInstance,
 			VkPhysicalDevice vkPhysicalDevice,
 			VkPhysicalDeviceProperties vkDeviceProp,
 			VkDevice vkDevice,
-			std::vector<VkQueueFamilyProperties> &familyProp);
+			std::vector<VkQueueFamilyProperties> &familyProp,
+			VkCommandPool vkCmdPool,
+			VkDescriptorPool vkDescPool,
+			VkDescriptorSetLayout descSetLayout,
+			VkDescriptorSet vkDescSet,
+			VkPipelineLayout vkPipelineLayout,
+			uint32 graphicsQueueFamilyIndex,
+			VkQueue vkGraphicsQueue);
 		~GpuDevice();
-		msize AllocateMemory(msize size);
-		void DeallocateMemory(msize offset);
-		void MapMemory(msize offset, msize size, void **ppData);
+		uint32 AllocateMemory(uint32 size);
+		void DeallocateMemory(uint32 offset);
+		void MapMemory(uint32 offset, uint32 size, void **ppData);
 		void UnmapMemory();
-	public:
-		HResult CreateCommandPool(CommandPool **ppCommandPool);
-		HResult CreateDescriptorPool(DescriptorPool **ppDescPool);
+		void UpdateStorageBuffer();
+		bool GetMemoryTypeFromRequirements(
+			VkPhysicalDevice vkPhysicalDevice,
+			uint32 typeBits,
+			VkFlags requirementsMask,
+			uint32 *typeIndex);
+		void GetAvailableSampleCount(
+			VkPhysicalDeviceProperties vkDeviceProp,
+			VkSampleCountFlagBits desiredSampleCount,
+			VkSampleCountFlagBits *availableSampleCount);
+		HResult CreateShader(
+			uint32 *code,
+			uint32 size,
+			Shader **ppShader);
 		HResult CreateSwapChain(
 			uint32 width,
 			uint32 height,
 			Surface *surface,
 			SwapChain **ppSwapChain);
-		HResult CreateShader(
-			uint32 *code,
-			uint32 size,
-			Shader **ppShader);
 		HResult CreatePipeline(
 			SwapChain* swapChain,
 			Shader *vertexShader,
 			Shader *fragmentShader,
 			Pipeline **ppPipeline);
-		HResult CreateRenderTargetPipelines(
-			SwapChain* swapChain,
-			Shader *vertexShader,
-			Shader *fragmentShader,
-			Pipeline **ppPipeline);
+		HResult CreateCommandBuffer(CommandBuffer **ppCommandBuffer);
 		HResult CreateBuffer(
 			VkBufferUsageFlags vkBufferType,
 			uint32 memoryTypeBits,
-			msize size,
+			uint32 size,
 			Buffer **ppBuffer);
+	public:
+		VkInstance GetVkInstance();
 		HResult CreateRenderTarget(
-			SwapChain *swapChain,
-			CommandBuffer *cmdBuffer,
+			uint32 width,
+			uint32 height,
+			Surface *surface,
 			RenderTarget **ppRenderTarget);
 		HResult CreateBitmap(
 			uint32 width,
