@@ -1,32 +1,24 @@
 # Performance library
-This project, for now, is experimental court for testing new efficient algorithms:
+This project provides functionality for creating applications with user interface:
+<ol>
+  <li>Graphics rendering (shapes, transformations, color gradients, images)</li>
+  <li>Text output with customized layout</li>
+  <li>User interface components</li>
+</ol>
 
-GPU path rendering, as described in publication
-https://drive.google.com/open?id=1HQLDj0a67rBy3hYhf_lDwLFXZPrPBsQl
+Windows platform is supported
 
-Geodesic distance and triangulation
+Some algorithms used in the library are covered in my publications:<br>
+GPU path rendering<br>
+https://drive.google.com/open?id=1HQLDj0a67rBy3hYhf_lDwLFXZPrPBsQl<br>
+Geodesic distance and triangulation<br>
 https://drive.google.com/open?id=11K8rVG3lTxP8OFn3r2VS26tLc-s4Ka-e
 
-Both can be tested with project, that compiles on Windows.
-Main file for testing is source\Scene.cpp
-
-# Future release
-It is planned to develop complete rendering engine with three modules for the next release:
-<ol>
-<li>Graphics 2d API</li>
-<li>Customized text layout</li>
-<li>User interface components</li>
-</ol>
-for Windows and Android platforms.
-
 # Dependencies
-<ul>
-<li>Vulkan - video device interface</li>
-<li>Freetype - font loader</li>
-</ul>
+Vulkan - video device interface
 
 # Got questions?
 Contact me: https://www.linkedin.com/in/roman-shkurdalov-a9601a135/
 
 # License
-Clear BSD License
+The Clear BSD License
